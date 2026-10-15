@@ -39,4 +39,26 @@ run(0, allTitles, 1500);
 console.log("--- weitere Evaluatoren (3P Standard + 6P) ---");
 for(const i of [1,2,3,4]) run(i, [["3","3-Player Standard"],["6","6-Player"]], 1500);
 
+console.log("--- Pipeline Simple Slice -> Joebrew (alle Layouts) ---");
+{
+  const evA=T.evSlice(), evB=T.evJoe();
+  for(const [p,title] of allTitles){
+    const rng=T.mulberry32(777);
+    const st=T.buildState(title,pool,evA);
+    st.pool=T.chooseTiles(pool,st.opens.length,0.60,true,rng);
+    st.eval=evA; const wa=T.computeHomeW(st);
+    st.eval=evB; const wb=T.computeHomeW(st);
+    const valA={},valB={};
+    for(const sy of st.pool){ valA[sy.id]=evA.sysVal(sy); valB[sy.id]=evB.sysVal(sy); }
+    valA[18]=evA.sysVal(T.SYS[18]); valB[18]=evB.sysVal(T.SYS[18]);
+    st.eval=evA; st.homeW=wa;
+    const best=T.optimizePair(st,evA,evB,2500,rng,{wa:wa,wb:wb,valA:valA,valB:valB});
+    if(!best){ console.log("KEINE KARTE", title); fails++; continue; }
+    const gA=T.range(T.evalUnder(st,best.place,evA));
+    const gB=T.range(T.evalUnder(st,best.place,evB));
+    worst=Math.max(worst,gA,gB);
+    console.log(`${title.padEnd(22)} n=${st.opens.length} gapSlice=${gA} gapJoebrew=${gB}`);
+  }
+}
+
 console.log(fails ? ("FAILS="+fails) : ("OK - worst gap = "+worst));

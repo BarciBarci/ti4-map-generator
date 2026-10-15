@@ -14,6 +14,9 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 - **Evaluator-Umschalter** (Simple Slice, Joebrew, Resource/Influence/Tech Access) – die Karte wird nach dem gewählten
   Maßstab bewertet und kann mit **„Balance verbessern“** nachoptimiert werden.
 - Ziel-**Blau-Anteil** einstellbar (Standard 60 % ≈ Community-Verhältnis 3:2).
+- **Standard-Optimierung: Simple Slice → Joebrew.** Die Karte wird erst nach dem groben, dann nach dem
+  ausführlichen Maßstab optimiert und anschließend direkt auf **beide Gaps zusammen** (Gap Slice + Gap Joebrew)
+  nachgeschärft. Beide Werte werden angezeigt.
 - **Wormholes als Paare** (gleich viele α und β).
 - Optimierung per Zufalls-Restarts + lokaler Suche bis **Balance Gap 0** (jeder Spieler sieht dieselbe Wertsumme);
   Legalität wird erzwungen (keine zwei Anomalien benachbart, keine zwei gleichen Wormholes benachbart).
@@ -53,10 +56,13 @@ git push -u origin main
 - **Wert pro System**: Summe über Planeten von `max(Ressourcen, Influence) + 1 pro Tech-Spezialisierung`,
   plus Bonus für Legendary-Planeten und Space Stations.
 - **Home-Wert**: für jedes Heimatsystem die Summe `Systemwert × Distanzgewicht` über alle Systeme in Reichweite
-  (Gewichte 3/2/1 für Distanz 1/2/3).
-- **Balance Gap** = größter − kleinster Home-Wert. Ziel: **0**.
-- Die App füllt zufällig (legal), verbessert dann per Tausch-Verfahren und wiederholt das mit vielen Restarts in einem
-  Zeitfenster; behalten wird die beste Karte.
+  (Gewichte gemäß Evaluator, z. B. 3/2/1 für Distanz 1/2/3).
+- **Balance Gap** = größter − kleinster Home-Wert.
+- **Standard-Ablauf** beim Klick auf „Karte generieren“:
+  1. viele Zufalls-Restarts, die pro Durchlauf abwechselnd mit **Simple Slice** und **Joebrew** optimieren,
+  2. danach eine direkte Optimierung der **kombinierten** Zielfunktion `Gap(Slice) + Gap(Joebrew)`,
+  3. behalten wird die Karte mit dem kleinsten kombinierten Gap (Zeitbudget skaliert mit der Kartengröße).
+- **„Balance verbessern“** optimiert die bestehende Karte weiter, nach dem im Dropdown gewählten Evaluator.
 
 ## Daten aktualisieren
 

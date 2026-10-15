@@ -258,6 +258,88 @@
     return best;
   }
 
+  // ---- Zweistufige Optimierung: Simple Slice -> Joebrew ----
+  const IDX_SLICE = (function(){ const i=default_evaluators.findIndex(e=>e.title==="Simple Slice"); return i<0?0:i; })();
+  const IDX_JOE = (function(){ const i=default_evaluators.findIndex(e=>e.title==="Joebrew"); return i<0?Math.min(1,default_evaluators.length-1):i; })();
+  let _evS=null, _evJ=null;
+  function evSlice(){ return _evS || (_evS = makeEval(default_evaluators[IDX_SLICE].data)); }
+  function evJoe(){ return _evJ || (_evJ = makeEval(default_evaluators[IDX_JOE].data)); }
+
+  function evalUnder(st, place, ev){
+    const oE=st.eval, oW=st.homeW;
+    st.eval=ev; st.homeW=computeHomeW(st);
+    const vals=computeVals(st,place);
+    st.eval=oE; st.homeW=oW;
+    return vals;
+  }
+
+  // Direkte Optimierung der kombinierten Zielfunktion gap(A)+gap(B).
+  // Nutzt vorberechnete Gewichte (wa/wb) und Systemwerte (valA/valB).
+  function hillClimbCombined(st, wa, wb, valA, valB, place, deadline){
+    const keys=Object.keys(place), nH=st.homes.length;
+    const vA=new Array(nH).fill(0), vB=new Array(nH).fill(0);
+    for(const pos in place){
+      const a=valA[place[pos].id], b=valB[place[pos].id];
+      for(let h=0;h<nH;h++){ vA[h]+=a*(wa[h][pos]||0); vB[h]+=b*(wb[h][pos]||0); }
+    }
+    if(st.rexKey){ const ra=valA[REX_ID], rb=valB[REX_ID];
+      for(let h=0;h<nH;h++){ vA[h]+=ra*(wa[h][st.rexKey]||0); vB[h]+=rb*(wb[h][st.rexKey]||0); } }
+    let improved=true, guard=0;
+    while(improved && guard++<300 && performance.now()<deadline){
+      improved=false;
+      for(let i=0;i<keys.length;i++){
+        for(let j=i+1;j<keys.length;j++){
+          const p=keys[i], q=keys[j];
+          const a1=valA[place[p].id], b1=valB[place[p].id];
+          const a2=valA[place[q].id], b2=valB[place[q].id];
+          if(a1===a2 && b1===b2) continue;
+          if(!swapLegal(st,place,p,q)) continue;
+          let nAmin=Infinity,nAmax=-Infinity,nBmin=Infinity,nBmax=-Infinity;
+          for(let h=0;h<nH;h++){
+            const nA=vA[h]+(a2-a1)*((wa[h][p]||0)-(wa[h][q]||0));
+            const nB=vB[h]+(b2-b1)*((wb[h][p]||0)-(wb[h][q]||0));
+            if(nA<nAmin)nAmin=nA; if(nA>nAmax)nAmax=nA;
+            if(nB<nBmin)nBmin=nB; if(nB>nBmax)nBmax=nB;
+          }
+          if((nAmax-nAmin)+(nBmax-nBmin) < range(vA)+range(vB)){
+            for(let h=0;h<nH;h++){
+              vA[h]+=(a2-a1)*((wa[h][p]||0)-(wa[h][q]||0));
+              vB[h]+=(b2-b1)*((wb[h][p]||0)-(wb[h][q]||0));
+            }
+            const t=place[p]; place[p]=place[q]; place[q]=t;
+            improved=true;
+          }
+        }
+      }
+    }
+  }
+
+  // Restart-Schleife: pro Durchlauf A,B,A,B (endet auf B), danach direkte
+  // Optimierung von gap(A)+gap(B). Behaelt die beste kombinierte Karte.
+  function optimizePair(st, evA, evB, budgetMs, rng, prep){
+    const deadline=performance.now()+budgetMs;
+    const passes = (evB!==evA) ? [evA,evB,evA,evB] : [evA];
+    const stage=Math.max(120, budgetMs/(passes.length+2));
+    let best=null, bestScore=Infinity;
+    while(performance.now()<deadline){
+      st.eval=evA; st.homeW=computeHomeW(st);
+      const place=randomFill(st,rng); if(!place) continue;
+      let over=false;
+      for(const ev of passes){
+        if(performance.now()>=deadline){ over=true; break; }
+        st.eval=ev; st.homeW=computeHomeW(st);
+        const vals=computeVals(st,place);
+        hillClimb(st,place,vals,Math.min(deadline, performance.now()+stage));
+      }
+      if(prep) hillClimbCombined(st, prep.wa, prep.wb, prep.valA, prep.valB, place, Math.min(deadline, performance.now()+stage));
+      const vA=evalUnder(st,place,evA), vB=evalUnder(st,place,evB);
+      const score=range(vA)+range(vB);
+      if(score<bestScore){ bestScore=score; best={ place:Object.assign({},place) }; if(score===0) break; }
+      if(over) break;
+    }
+    return best;
+  }
+
   // ---- Rendering ----
   function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   const TRAIT_FILL = {};
@@ -355,22 +437,30 @@
   function fillEvaluators(){
     const sel=$("evaluator"); sel.innerHTML="";
     default_evaluators.forEach((e,i)=>{ const o=document.createElement("option"); o.value=String(i); o.textContent=e.title; sel.appendChild(o); });
+    sel.value=String(IDX_JOE);   // Anzeige standardmäßig Joebrew (Pipeline endet auf Joebrew)
   }
   function setStatus(t){ $("status").textContent=t; }
   function curEval(){ return makeEval(default_evaluators[+$("evaluator").value].data); }
 
   function paint(){
-    const st=cur.st, vals=cur.vals, gap=range(vals), s=stats(st,cur.place);
-    $("map").innerHTML=render(st,cur.place,vals);
-    $("mapstring").value=mapString(st,cur.place);
-    $("stats").innerHTML =
+    const st=cur.st, place=cur.place, vals=cur.vals, s=stats(st,place);
+    const gSel=range(vals);
+    const gSlice=range(evalUnder(st,place,evSlice()));
+    const gJoe=range(evalUnder(st,place,evJoe()));
+    const selName=default_evaluators[+$("evaluator").value].title;
+    $("map").innerHTML=render(st,place,vals);
+    $("mapstring").value=mapString(st,place);
+    let pills =
       `<span class="pill">Blue/Red <b>${s.blue}/${s.red}</b></span>`+
       `<span class="pill">Res/Inf <b>${s.res}/${s.inf}</b></span>`+
       `<span class="pill">Tech <b>${s.tech||"-"}</b></span>`+
       `<span class="pill">Traits R/G/B <b>${s.traits}</b></span>`+
-      `<span class="pill">Wormholes α/β <b>${s.wh}</b></span>`+
-      `<span class="pill ${gap===0?"good":"warn"}">Balance Gap <b>${gap}</b></span>`;
-    setStatus(`Home-Werte: ${vals.join(" / ")}`);
+      `<span class="pill">Wormholes α/β <b>${s.wh}</b></span>`;
+    if(selName!=="Simple Slice") pills += `<span class="pill ${gSlice===0?"good":"warn"}">Gap Simple Slice <b>${gSlice}</b></span>`;
+    if(selName!=="Joebrew") pills += `<span class="pill ${gJoe===0?"good":"warn"}">Gap Joebrew <b>${gJoe}</b></span>`;
+    pills += `<span class="pill ${gSel===0?"good":"warn"}">Gap ${selName} <b>${gSel}</b></span>`;
+    $("stats").innerHTML = pills;
+    setStatus(`Home-Werte (${selName}): ${vals.join(" / ")}`);
   }
 
   function generate(){
@@ -381,13 +471,21 @@
     setTimeout(()=>{
       try{
         const rng=mulberry32((Math.random()*1e9)|0);
-        const ev=curEval();
-        const st=buildState(title,pool,ev);
+        const st=buildState(title,pool,curEval());
         st.pool=chooseTiles(pool,st.opens.length,(+$("ratio").value)/100,$("wh").checked,rng);
         if(st.pool.length<st.opens.length){ setStatus(`Zu wenige Tiles (${st.pool.length}/${st.opens.length}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
-        const best=optimize(st,1500,rng);
+        const evA=evSlice(), evB=evJoe();
+        st.eval=evA; const wa=computeHomeW(st);
+        st.eval=evB; const wb=computeHomeW(st);
+        const valA={}, valB={};
+        for(const sy of st.pool){ valA[sy.id]=evA.sysVal(sy); valB[sy.id]=evB.sysVal(sy); }
+        valA[REX_ID]=evA.sysVal(SYS[REX_ID]); valB[REX_ID]=evB.sysVal(SYS[REX_ID]);
+        st.eval=evA; st.homeW=wa;
+        const budget=Math.min(6000, 1800 + st.opens.length*60);
+        const best=optimizePair(st, evA, evB, budget, rng, {wa:wa, wb:wb, valA:valA, valB:valB});
         if(!best){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
-        cur={ st:st, place:best.place, vals:best.vals };
+        st.eval=curEval(); st.homeW=computeHomeW(st);
+        cur={ st:st, place:best.place, vals:computeVals(st,best.place) };
         paint();
       } catch(e){ setStatus("Fehler: "+e.message); console.error(e); }
       $("generate").disabled=false;
@@ -442,5 +540,5 @@
   fillLayouts(); fillEvaluators();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, optimize, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, optimize, optimizePair, evalUnder, evSlice, evJoe, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators }; }
 })();
