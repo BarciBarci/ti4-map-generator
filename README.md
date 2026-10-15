@@ -29,6 +29,8 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
   (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
   **in Reichweite** des jeweiligen Heimatsystems; optional **möglichst auch für die Nachbarn erreichbar**
   (kontestiert). Eine Fraktion ist nur einmal wählbar – siehe Abschnitt unten.
+- **Design-Umschalter:** Classic (dunkel), **Retro 8-Bit** (kräftige Farben, dicke Outlines, Scanlines,
+  Monospace) und **Biomech/Giger** (entsättigt, Knochen-/Asche-Töne mit Säuregrün). Vorschauen in `previews/`.
 - Ausgabe: gerenderte Karte (**PNG**- oder SVG-Download), **Map-String** (kompatibel mit TI4 Map Lab / TTS / keeganw),
   Statistik (Blue/Red, Resources/Influence, Tech, Traits R/G/B, Wormholes) und die Home-Werte.
 
@@ -113,7 +115,8 @@ es möglichst auch die **Nachbarn** erreichen können – gestuft:
 | `near` | in Reichweite von eigenem Home **und mind. einem** Nachbarn |
 | `own` | nur eigenes Home (Fallback) |
 
-Gewählt wird die **beste erfüllbare** Stufe; sie wird in der Pille angezeigt. **Wichtiger Befund**
+Gewählt wird die **beste erfüllbare** Stufe; sie wird unter der Karte am Heimatsystem bzw. in der Datenzeile
+angezeigt. **Wichtiger Befund**
 (`tools/probe_reach.js`): Stufe `both` ist in **keinem** der eingebauten Layouts erfüllbar (Schnittmenge der
 drei Slices = 0), Stufe `near` dagegen in allen außer *3-Player Standard* und *3-Player Warp*. Der Schalter
 bewirkt also real, dass das Merkmal in die **umkämpfte Randzone** zwischen dem eigenen und einem Nachbar-Slice
@@ -141,8 +144,8 @@ gelegt wird statt tief ins eigene Gebiet.
 4. **Wormholes:** wird Creuss gewählt, wird die α/β-Paar-Garantie auch dann erzwungen, wenn die Option
    „Wormholes als Paare“ ausgeschaltet ist.
 5. **Anzeige/Prüfung:** `featureReport` prüft nach der Optimierung je Fraktion die erreichte Stufe
-   (`both`/`near`/`own`) bzw. „fehlt“ (Pill grün/rot, Fraktionskürzel am Heimatsystem). `test.js`
-   verifiziert das für 4/5/6 Spieler – auch im Kontest-Modus.
+   (`both`/`near`/`own`) bzw. „fehlt“ (Kennzeichnung grün/rot unter der Karte, Fraktionskürzel am
+   Heimatsystem). `test.js` verifiziert das für 4/5/6 Spieler – auch im Kontest-Modus.
 
 **Bewusste Grenzen:** Es wird *ein* Garantie-Tile je Bedarf fixiert (keine ganzen Slices); die weiche
 Balance läuft weiter über die fünf Evaluatoren. Discordant-Stars-Fraktionen (z. B. Nivyn Star Kings,
@@ -163,6 +166,22 @@ Liste nicht enthalten; der Wormhole-Bedarf folgt direkt aus seiner Fähigkeit (�
 alpha-/beta-Wormhole als benachbart“). Weitere geprüfte Quellen zum Umfeld: `acodcha/ti4-cartographer`
 (Layout-Eigenschaften + empfohlene Aggression/VP) und `daveah/ti4_planet_selection` (Ressourcen-/Influence-,
 max. 1 Wormhole pro Spieler).
+
+## Designs
+
+Über das Dropdown **„Design“** lässt sich die Optik umschalten (gilt für Karte + Seite):
+
+| Design | Stil |
+| --- | --- |
+| `Classic (dunkel)` | bisheriges, dezentes Dunkelblau/Dunkelgrün/Dunkelbraun |
+| `Retro 8-Bit` | kräftige Primärfarben, dicke schwarze Outlines, Scanline-Overlay, Monospace-Schrift |
+| `Biomech (Giger)` | entsättigte Knochen-/Asche-/Rost-Töne, dünne Linien, Säuregrün als Akzent |
+
+Vorschauen (vom App-Renderer selbst erzeugt):
+
+```bash
+node tools/preview_themes.js     # schreibt previews/theme-<name>.svg
+```
 
 ## Daten aktualisieren
 
@@ -194,9 +213,11 @@ node tools/probe_reach.js
 ## Screenshot / Beispielkarte neu erzeugen
 
 ```bash
-node tools/export_map.js        # schreibt tools/map.json (Beispielkarte)
+node tools/export_map.js        # schreibt tools/map.json (Beispielkarte, inkl. Faktionskürzeln)
 python3 tools/make_screenshot.py # rendert screenshot.png (1200x630, Pillow)
 ```
+
+Das Beispiel nutzt den Kontest-Modus mit sechs Fraktionen; die Fraktionskürzel stehen am Heimatsystem.
 
 ## Credits & Lizenz
 

@@ -1,7 +1,7 @@
 * { box-sizing: border-box; }
 :root{
   --bg:#0a0a12; --panel:#14141f; --panel2:#1b1b2a; --line:#2a2a3d;
-  --fg:#e8e8f0; --muted:#9a9ab0; --accent:#3f6fb5; --accent2:#b8912a;
+  --fg:#e8e8f0; --muted:#9a9ab0; --accent:#3f6fb5; --accent2:#b8912a; --mapbg:#07070c;
 }
 html,body{ margin:0; background:var(--bg); color:var(--fg);
   font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
@@ -57,7 +57,7 @@ button[disabled]{ opacity:.6; cursor:default; }
 .pill.warn{ border-color:#b8912a; }
 .pill.bad{ border-color:#c0392b; }
 
-.mapbox{ background:#07070c; border:1px solid var(--line); border-radius:10px;
+.mapbox{ background:var(--mapbg); border:1px solid var(--line); border-radius:10px;
   overflow:auto; padding:6px; }
 .mapbox svg{ display:block; }
 
@@ -70,3 +70,22 @@ button[disabled]{ opacity:.6; cursor:default; }
 .fan a{ color:#8ab4f8; }
 
 @media (max-width:820px){ main{ flex-direction:column; } .panel{ width:100%; } }
+
+/* ---- Designs (umschaltbar) ---- */
+body[data-theme="retro"]{
+  --bg:#0b0b1f; --panel:#161634; --panel2:#1b1b3a; --line:#2b2b55;
+  --fg:#eaeaff; --muted:#9a9ac8; --accent:#2b4bd8; --accent2:#d4a017; --mapbg:#0b0b1f;
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+}
+body[data-theme="retro"] header h1{ letter-spacing:1.5px; }
+body[data-theme="retro"] .pill{ border-radius:6px; }
+body[data-theme="retro"] button,.btn{ border-width:2px; border-radius:4px; }
+
+body[data-theme="giger"]{
+  --bg:#08090a; --panel:#14160f; --panel2:#1c1e1a; --line:#2f332c;
+  --fg:#e6ead8; --muted:#98a08e; --accent:#5a6b3a; --accent2:#a6e22e; --mapbg:#08090a;
+}
+body[data-theme="giger"] header{ border-bottom-color:#3a4034; }
+body[data-theme="giger"] button.primary{ background:#4a5a30; border-color:#6b7d42; }
+body[data-theme="giger"] .pill.good{ border-color:#5d7a3a; }
+body[data-theme="giger"] .pill.warn{ border-color:#8a6d2a; }

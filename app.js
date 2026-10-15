@@ -616,10 +616,28 @@
 
   // ---- Rendering ----
   function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  const TRAIT_FILL = {};
-  TRAIT_FILL[PLANET_TRAITS.HAZARDOUS]="#c0392b";
-  TRAIT_FILL[PLANET_TRAITS.INDUSTRIAL]="#27ae60";
-  TRAIT_FILL[PLANET_TRAITS.CULTURAL]="#2980b9";
+  // ---- Designs (Themes) ----
+  const THEMES = {
+    classic: { label:"Classic (dunkel)", bg:"#07070c", panel:"#141420",
+      blue:"#1f3a63", red:"#572c27", home:"#1f7a33", rex:"#7a6118", closed:"#08080d", warp:"#0d0d16",
+      stroke:"#000000", sw:1, font:"sans-serif",
+      id:"#a9bad6", homeLabel:"#dff5e1", value:"#ffffff", rexLabel:"#ffe9a8", warpGlyph:"#5a5a78",
+      glyph:"#ffd479", trait:["#c0392b","#27ae60","#2980b9"], traitNone:"#7f8c8d",
+      techFill:"#101010", techStroke:"#e8e8f0", resinf:"#dfe7f5", scanlines:false },
+    retro: { label:"Retro 8-Bit", bg:"#0b0b1f", panel:"#1b1b3a",
+      blue:"#2b4bd8", red:"#c03028", home:"#2fb344", rex:"#d4a017", closed:"#000000", warp:"#12123a",
+      stroke:"#000000", sw:3, font:"monospace",
+      id:"#eaeaff", homeLabel:"#06310f", value:"#0b0b1f", rexLabel:"#3a2a00", warpGlyph:"#6a6aa0",
+      glyph:"#ffe14d", trait:["#e04a2f","#39d353","#3aa0ff"], traitNone:"#8a8ab0",
+      techFill:"#0b0b1f", techStroke:"#eaeaff", resinf:"#0b0b1f", scanlines:true },
+    giger: { label:"Biomech (Giger)", bg:"#08090a", panel:"#1c1e1a",
+      blue:"#2e3330", red:"#412a24", home:"#414636", rex:"#6b5a2a", closed:"#000000", warp:"#101214",
+      stroke:"#000000", sw:1.5, font:"sans-serif",
+      id:"#9aa08f", homeLabel:"#c9d6a8", value:"#e6ead8", rexLabel:"#d8c98a", warpGlyph:"#4a5450",
+      glyph:"#a6e22e", trait:["#8a3a2a","#5a7a4a","#4a6a7a"], traitNone:"#5a6157",
+      techFill:"#0c0d0c", techStroke:"#c9d6a8", resinf:"#c9d0b8", scanlines:false },
+  };
+  function currentTheme(){ const sel=($("theme")&&$("theme").value)||"classic"; return THEMES[sel]?sel:"classic"; }
   function sysGlyphs(sys){
     const g=[];
     if(sys.anomalies!==null) g.push(sys.anomalies.map(a=>ANOM_LABEL[a]).join("/"));
@@ -628,7 +646,8 @@
     if(STATION.indexOf(sys.id)>=0) g.push("⌂");
     return g;
   }
-  function render(st, place, vals){
+  function render(st, place, vals, themeKey){
+    const th = THEMES[themeKey] || THEMES.classic;
     const S=30, SQ=Math.sqrt(3);
     const proj=c=>[SQ*S*(c.x+c.z/2), 1.5*S*c.z];
     const pts={}; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
@@ -641,48 +660,50 @@
     for(const c of st.cells){
       const p=pts[c.key], cx=+(p[0]+ox).toFixed(1), cy=+(p[1]+oy).toFixed(1);
       const poly=vtx.map(v=>`${(cx+v[0]).toFixed(1)},${(cy+v[1]).toFixed(1)}`).join(" ");
-      let fill="#141420";
+      let fill=th.panel;
       const sys=place[c.key];
-      if(c.type===TYPE.HOME) fill="#1f7a33";
-      else if(c.type===TYPE.REX) fill="#7a6118";
-      else if(c.type===TYPE.CLOSED) fill="#08080d";
-      else if(c.type===TYPE.WARP) fill="#0d0d16";
-      else if(c.type===TYPE.OPEN && sys) fill = isRed(sys)?"#572c27":"#1f3a63";
-      fills += `<polygon points="${poly}" fill="${fill}" stroke="#000" stroke-width="1"/>`;
+      if(c.type===TYPE.HOME) fill=th.home;
+      else if(c.type===TYPE.REX) fill=th.rex;
+      else if(c.type===TYPE.CLOSED) fill=th.closed;
+      else if(c.type===TYPE.WARP) fill=th.warp;
+      else if(c.type===TYPE.OPEN && sys) fill = isRed(sys)?th.red:th.blue;
+      fills += `<polygon points="${poly}" fill="${fill}" stroke="${th.stroke}" stroke-width="${th.sw}"/>`;
 
-      const T=(y,txt,size,fillc,w)=>`<text x="${cx}" y="${y}" font-size="${size}" fill="${fillc}" text-anchor="middle" font-family="sans-serif"${w?' font-weight="bold"':''}>${txt}</text>`;
+      const T=(y,txt,size,fillc,w)=>`<text x="${cx}" y="${y}" font-size="${size}" fill="${fillc}" text-anchor="middle" font-family="${th.font}"${w?' font-weight="bold"':''}>${txt}</text>`;
       if(c.type===TYPE.HOME){
         const hi=st.homes.indexOf(c.key);
         const fac=(st.factionNames && st.factionNames[hi]) ? shortFaction(st.factionNames[hi]) : null;
-        content += T(cy-16, "HOME", 10, "#dff5e1")
-                 + (fac ? T(cy-4, esc(fac), 10, "#ffe9a8") : "")
-                 + T(cy+15, hv[c.key], 16, "#fff", true);
+        content += T(cy-16, "HOME", 10, th.homeLabel)
+                 + (fac ? T(cy-4, esc(fac), 10, th.glyph) : "")
+                 + T(cy+15, hv[c.key], 16, th.value, true);
       } else if(c.type===TYPE.REX){
-        content += T(cy-6, "MECATOL", 9, "#ffe9a8") + T(cy+9, "1/6", 10, "#fff");
+        content += T(cy-6, "MECATOL", 9, th.rexLabel) + T(cy+9, "1/6", 10, th.value);
       } else if(c.type===TYPE.WARP){
-        content += T(cy+5, "⟡", 14, "#5a5a78");
+        content += T(cy+5, "⟡", 14, th.warpGlyph);
       } else if(c.type===TYPE.OPEN && sys){
-        content += T(cy-17, sys.id, 9, "#a9bad6");
+        content += T(cy-17, sys.id, 9, th.id);
         const ps=sys.planets, n=ps.length;
         const spacing = n>1 ? Math.min(S*0.55, (S*1.15)/(n-1)) : 0;
         const discR = n>1 ? Math.min(8.5, spacing*0.42) : 8.5;
         const startX = cx - (n-1)*spacing/2;
         ps.forEach((pl,i)=>{
           const px=+(startX+i*spacing).toFixed(1), py=+(cy-2).toFixed(1);
-          const tf=(pl.traits&&pl.traits.length)?TRAIT_FILL[pl.traits[0]]:"#7f8c8d";
-          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${tf}" stroke="#000" stroke-width="0.8"/>`;
+          const tf=(pl.traits&&pl.traits.length)?(th.trait[pl.traits[0]]||th.traitNone):th.traitNone;
+          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${tf}" stroke="${th.stroke}" stroke-width="${(th.sw*0.8).toFixed(2)}"/>`;
           if(pl.tech_specialties && pl.tech_specialties.length){
             const bx=(px+discR*0.75).toFixed(1), by=(py-discR*0.75).toFixed(1);
-            content += `<circle cx="${bx}" cy="${by}" r="4.2" fill="#101010" stroke="#e8e8f0" stroke-width="0.6"/>`
-                     + `<text x="${bx}" y="${(+by+2.2).toFixed(1)}" font-size="6" fill="#fff" text-anchor="middle" font-family="sans-serif">${TECH_LETTER[pl.tech_specialties[0]]||""}</text>`;
+            content += `<circle cx="${bx}" cy="${by}" r="4.2" fill="${th.techFill}" stroke="${th.techStroke}" stroke-width="0.6"/>`
+                     + `<text x="${bx}" y="${(+by+2.2).toFixed(1)}" font-size="6" fill="${th.value}" text-anchor="middle" font-family="${th.font}">${TECH_LETTER[pl.tech_specialties[0]]||""}</text>`;
           }
-          content += `<text x="${px}" y="${(py+discR+8).toFixed(1)}" font-size="7.5" fill="#dfe7f5" text-anchor="middle" font-family="sans-serif">${pl.resources}/${pl.influence}</text>`;
+          content += `<text x="${px}" y="${(py+discR+8).toFixed(1)}" font-size="7.5" fill="${th.resinf}" text-anchor="middle" font-family="${th.font}">${pl.resources}/${pl.influence}</text>`;
         });
         const g=sysGlyphs(sys);
-        if(g.length) content += T(cy+21, g.join(" "), 8, "#ffd479");
+        if(g.length) content += T(cy+21, g.join(" "), 8, th.glyph);
       }
     }
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${wd|0}" height="${ht|0}" viewBox="0 0 ${wd|0} ${ht|0}"><rect width="100%" height="100%" fill="#07070c"/>${fills}${content}</svg>`;
+    const scanDefs = th.scanlines ? `<defs><pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2" fill="#000000" opacity="0.16"/></pattern></defs>` : "";
+    const scanRect = th.scanlines ? `<rect width="100%" height="100%" fill="url(#scan)"/>` : "";
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${wd|0}" height="${ht|0}" viewBox="0 0 ${wd|0} ${ht|0}">${scanDefs}<rect width="100%" height="100%" fill="${th.bg}"/>${fills}${content}${scanRect}</svg>`;
   }
 
   // ---- Map-String & Statistik ----
@@ -716,6 +737,11 @@
     const sel=$("evaluator"); sel.innerHTML="";
     default_evaluators.forEach((e,i)=>{ const o=document.createElement("option"); o.value=String(i); o.textContent=e.title; sel.appendChild(o); });
     sel.value=String(IDX_JOE);   // Anzeige standardmäßig Joebrew (Pipeline endet auf Joebrew)
+  }
+  function fillThemes(){
+    const sel=$("theme"); if(!sel) return; sel.innerHTML="";
+    Object.keys(THEMES).forEach(kk=>{ const o=document.createElement("option"); o.value=kk; o.textContent=THEMES[kk].label; sel.appendChild(o); });
+    sel.value="classic";
   }
   function setStatus(t){ $("status").textContent=t; }
 
@@ -775,7 +801,8 @@
     const gaps=prep.map(E=>range(valsE(place,E,st.homes,st.rexKey)));
     const rel=gapsRel(place, prep, st.homes, st.rexKey);
     const maxRel=Math.max.apply(null,rel);
-    $("map").innerHTML=render(st,place,vals);
+    $("map").innerHTML=render(st,place,vals,currentTheme());
+    if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
     $("mapstring").value=mapString(st,place);
     let pills =
       `<span class="pill">Blue/Red <b>${s.blue}/${s.red}</b></span>`+
@@ -868,6 +895,10 @@
     if(!cur) return;
     paint();
   }
+  function onThemeChange(){
+    if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
+    if(cur) paint();
+  }
 
   function downloadPNG(){
     if(!cur){ setStatus("Erst generieren."); return; }
@@ -891,6 +922,7 @@
   $("players").addEventListener("change", ()=>{ fillLayouts(); fillFactions(); });
   $("ratio").addEventListener("input", ()=>{ $("ratioVal").textContent=$("ratio").value; });
   $("evaluator").addEventListener("change", onEvaluatorChange);
+  if($("theme")) $("theme").addEventListener("change", onThemeChange);
   $("generate").addEventListener("click", generate);
   $("improve").addEventListener("click", improve);
   $("png").addEventListener("click", downloadPNG);
@@ -898,8 +930,9 @@
   if($("useFactions")) $("useFactions").addEventListener("change", fillFactions);
   ["base","pok","te"].forEach(id=>{ if($(id)) $(id).addEventListener("change", fillFactions); });
 
-  fillLayouts(); fillEvaluators(); fillFactions();
+  fillLayouts(); fillEvaluators(); fillFactions(); fillThemes();
+  if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction }; }
 })();

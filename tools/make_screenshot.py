@@ -36,6 +36,7 @@ d.text((29, 48), data["subtitle"], font=F_SUB, fill=(154, 154, 176))
 d.line((0, HEAD - 1, W, HEAD - 1), fill=(42, 42, 61))
 
 cells = data["cells"]; place = data["place"]; systems = data["systems"]; hv = data["homeValues"]
+factions = data.get("factions", {})
 
 def proj(c, S):
     return (math.sqrt(3) * S * (c["x"] + c["z"] / 2.0), 1.5 * S * c["z"])
@@ -77,8 +78,11 @@ for c in cells:
 for c in cells:
     cx, cy = xy(c); t = c["type"]; key = "%d,%d,%d" % (c["x"], c["y"], c["z"]); sys = place.get(key)
     if t == 2:
-        ctext(cx, cy - 14, "HOME", F_SMALL, (223, 245, 225))
-        ctext(cx, cy + 12, hv.get(key, ""), F_HOMEV, (255, 255, 255))
+        ctext(cx, cy - 16, "HOME", F_SMALL, (223, 245, 225))
+        key = "%d,%d,%d" % (c["x"], c["y"], c["z"])
+        if factions.get(key):
+            ctext(cx, cy - 5, factions[key], F_SMALL, (255, 233, 168))
+        ctext(cx, cy + 15, hv.get(key, ""), F_HOMEV, (255, 255, 255))
     elif t == 3:
         ctext(cx, cy - 12, "MECATOL", F_MEC, (255, 233, 168))
         ctext(cx, cy + 10, "1/6", F_SMALL, (255, 255, 255))

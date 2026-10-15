@@ -16,10 +16,13 @@ const T = ctx.window.__ti4;
 const pool = T.buildPool(true, true, true);
 const evA = T.evSlice(), evB = T.evJoe();
 
+// Beispiel-Faktionen fuer die Vorschau/Screenshot (im App-Sinne: Spieler 1..n).
+const FAC = ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss","The Arborec"];
+
 let winner = null;
 for(let seed=1; seed<=16; seed++){
   const rng = T.mulberry32(seed);
-  const r = T.generateRounds("6-Player", pool, 0.60, true, rng, 6000, 0.02, 4);
+  const r = T.generateRounds("6-Player", pool, 0.60, true, rng, 6000, 0.02, 4, FAC, true);
   if(!r || r.error) continue;
   if(!winner || r.mx < winner.mx){ winner = { st:r.st, place:r.res.place, mx:r.mx, rel:r.res.rel, seed:seed }; }
   if(winner.mx <= 0.02) break;
@@ -45,7 +48,8 @@ for(const pos in place){
 }
 const placeIds = {}; for(const pos in place) placeIds[pos] = place[pos].id;
 const valsB = T.evalUnder(st, place, evB);
-const homeValues = {}; st.homes.forEach((h,i)=>homeValues[h]=valsB[i]);
+const homeValues = {}; const factions = {};
+st.homes.forEach((h,i)=>{ homeValues[h]=valsB[i]; if(st.factionNames && st.factionNames[i]) factions[h]=T.shortFaction(st.factionNames[i]); });
 
 const out = {
   title: "TI4 Balanced Map Generator",
@@ -54,6 +58,7 @@ const out = {
   place: placeIds,
   systems: systems,
   homeValues: homeValues,
+  factions: factions,
   mapString: T.mapString(st, place),
 };
 fs.writeFileSync(path.join(__dirname,"map.json"), JSON.stringify(out));
