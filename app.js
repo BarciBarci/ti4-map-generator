@@ -21,6 +21,74 @@
     6: ["6-Player", "6-Player Large Galaxy"],
   };
 
+  // ---- Fraktionsspezifische Kartenanforderungen ----
+  // Quelle: KeeganW/ti4, Option "Ensure Faction Anomalies" (src/options/MapOptions.js)
+  // https://github.com/KeeganW/ti4  – kein offizielles FFG-Dokument, sondern Community-Standard.
+  // Idee: das fraktionsspezifische, vorteilhafte Merkmal sichern – fehlt es, wird die Fraktion benachteiligt.
+  const FACTIONS = [
+    { name:"The Arborec", exp:"base" }, { name:"The Barony of Letnev", exp:"base" },
+    { name:"The Clan of Saar", exp:"base" }, { name:"The Embers of Muaat", exp:"base" },
+    { name:"The Emirates of Hacan", exp:"base" }, { name:"The Federation of Sol", exp:"base" },
+    { name:"The Ghosts of Creuss", exp:"base" }, { name:"The L1Z1X Mindnet", exp:"base" },
+    { name:"The Mentak Coalition", exp:"base" }, { name:"The Naalu Collective", exp:"base" },
+    { name:"The Nekro Virus", exp:"base" }, { name:"Sardakk N'orr", exp:"base" },
+    { name:"The Universities of Jol-Nar", exp:"base" }, { name:"The Winnu", exp:"base" },
+    { name:"The Xxcha Kingdom", exp:"base" }, { name:"The Yin Brotherhood", exp:"base" },
+    { name:"The Yssaril Tribes", exp:"base" },
+    { name:"The Argent Flight", exp:"pok" }, { name:"The Empyrean", exp:"pok" },
+    { name:"The Mahact Gene-sorcerers", exp:"pok" }, { name:"The Naaz-Rokha Alliance", exp:"pok" },
+    { name:"The Nomad", exp:"pok" }, { name:"The Titans of Ul", exp:"pok" },
+    { name:"The Vuil'raith Cabal", exp:"pok" },
+    { name:"The Crimson Rebellion", exp:"te" }, { name:"The Deepwrought Scholarate", exp:"te" },
+    { name:"The Firmament", exp:"te" }, { name:"Last Bastion", exp:"te" },
+    { name:"The Ral Nel Consortium", exp:"te" },
+  ];
+  // Fraktion -> benoetigtes Merkmal (Supernova/Asteroidennebel/Gravitationsriss bzw. Wormhole).
+  // Muaat/Saar/Empyrean/Vuil'raith nach KeeganW; Creuss folgt aus seiner Faehigkeit
+  // ("behandelt alle Systeme mit alpha-/beta-Wormhole als benachbart").
+  const FACTION_ANOMALY = {};
+  FACTION_ANOMALY["The Embers of Muaat"]  = ANOMALIES.SUPERNOVA;
+  FACTION_ANOMALY["The Clan of Saar"]     = ANOMALIES.ASTEROID_FIELD;
+  FACTION_ANOMALY["The Empyrean"]         = ANOMALIES.NEBULA;
+  FACTION_ANOMALY["The Vuil'raith Cabal"] = ANOMALIES.GRAVITY_RIFT;
+  const FACTION_WORMHOLE = { "The Ghosts of Creuss": true };
+  const FEATURE_LABEL = {};
+  FEATURE_LABEL[ANOMALIES.SUPERNOVA]="Supernova"; FEATURE_LABEL[ANOMALIES.ASTEROID_FIELD]="Asteroidenfeld";
+  FEATURE_LABEL[ANOMALIES.NEBULA]="Nebel"; FEATURE_LABEL[ANOMALIES.GRAVITY_RIFT]="Gravitationsriss";
+  FEATURE_LABEL[ANOMALIES.ENTROPIC_SCAR]="Entropic Scar";
+
+  function factionNeed(name){
+    if(!name) return null;
+    if(FACTION_ANOMALY[name]!==undefined) return { kind:"anomaly", value:FACTION_ANOMALY[name] };
+    if(FACTION_WORMHOLE[name]) return { kind:"wormhole" };
+    return null;
+  }
+  function needLabel(f){ return f.kind==="wormhole" ? "α/β-Wormhole" : (FEATURE_LABEL[f.value]||"?"); }
+  function hasFeature(sys, f){
+    if(!sys) return false;
+    if(f.kind==="wormhole") return sys.wormhole!==null && sys.wormhole!==WORMHOLES.DELTA;
+    return sys.anomalies!==null && sys.anomalies.indexOf(f.value)>=0;
+  }
+
+  // Merkmale, die die gewaehlten Fraktionen brauchen, die aber im Tile-Vorrat gar nicht vorkommen.
+  function missingFeatures(pool, factions){
+    const miss=[];
+    for(const name of (factions||[])){
+      const f=factionNeed(name); if(!f) continue;
+      if(!pool.some(s=>hasFeature(s,f))){ const l=needLabel(f); if(miss.indexOf(l)<0) miss.push(l); }
+    }
+    return miss;
+  }
+
+  // Prueft je Fraktionsbedarf, ob ein passendes Tile in Reichweite liegt.
+  function featureReport(st, place){
+    return (st.reqs||[]).map(function(r){
+      const idx=st.homes.indexOf(r.home);
+      const ok=r.positions.some(p=>place[p] && hasFeature(place[p], r.feature));
+      return { name:(st.factionNames&&st.factionNames[idx])||("Spieler "+(idx+1)), feature:r.featureKey, ok:ok };
+    });
+  }
+
   function k(x,y,z){ return x+","+y+","+z; }
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function shuffle(a,rng){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
@@ -103,7 +171,21 @@
     return out;
   }
 
-  function buildState(title, pool, ev){
+  // Offene Felder, die ein Spieler von seinem Heimatsystem aus in <=maxD Zuegen erreicht
+  // (andere Heimatsysteme und Mecatol werden nicht durchquert). Entspricht KeeganW's
+  // "Slice" mit SLICE_DISTANCE = 2.
+  function reachPositions(st, homeKey, maxD){
+    const blocked={}; for(const h of st.homes) blocked[h]=1; if(st.rexKey) blocked[st.rexKey]=1;
+    const dist={}; dist[homeKey]=0; let front=[homeKey];
+    for(let d=1; d<=maxD; d++){ const nf=[];
+      for(const c of front) for(const n of (st.adj[c]||[])){ if(blocked[n] || (n in dist)) continue; dist[n]=d; nf.push(n); }
+      front=nf; }
+    const opens={}; for(const o of st.opens) opens[o]=1;
+    return Object.keys(dist).filter(p=>p!==homeKey && dist[p]<=maxD && opens[p]);
+  }
+
+  // factions: Array (pro Heimatsystem/Spieler) mit Fraktionsnamen oder null.
+  function buildState(title, pool, ev, factions){
     const layout = default_layouts.find(l => l.title === title);
     const cells = layout.data.map(sp => ({ x:sp.x, y:sp.y, z:sp.z, key:k(sp.x,sp.y,sp.z), type:sp.type }));
     const byKey = {}; cells.forEach(c => byKey[c.key]=c);
@@ -117,6 +199,14 @@
     const rex = cells.find(c=>c.type===TYPE.REX);
     const st = { cells, byKey, adj, homes, opens, rexKey: rex?rex.key:null, pool, eval:ev };
     st.homeW = computeHomeW(st);
+
+    // Fraktionsbedarf: je Spieler das Merkmal + die Felder, in denen es "erreichbar" zaehlt.
+    st.factionNames = factions ? factions.slice() : null;
+    st.reqs = [];
+    if(factions) factions.forEach(function(name, i){
+      const f = factionNeed(name); if(!f || !homes[i]) return;
+      st.reqs.push({ home:homes[i], feature:f, featureKey:needLabel(f), positions:reachPositions(st, homes[i], 2) });
+    });
     return st;
   }
 
@@ -140,22 +230,54 @@
     return false;
   }
 
-  function chooseTiles(pool, nOpen, ratio, wantWh, rng){
+  // Aus st.reqs abgeleiteter Tile-Bedarf: je Merkmal die Anzahl benötigter Tiles.
+  function featureDemand(st){
+    const out=[];
+    for(const r of (st.reqs||[])){
+      const key=r.feature.kind+":"+(r.feature.value!==undefined?r.feature.value:"wh");
+      let e=out.find(o=>o.key===key);
+      if(!e){ e={ key:key, feature:r.feature, count:0 }; out.push(e); }
+      e.count++;
+    }
+    return out;
+  }
+
+  // Erzwingt, dass fuer jeden Bedarf genug Merkmals-Tiles in der Auswahl sind. Es wird ein
+  // farbgleiches Tile ohne dieses Merkmal ersetzt, damit Blue/Red-Verhaeltnis erhalten bleibt.
+  function ensureFeatures(sel, blue, red, demand, rng){
+    for(const d of demand){
+      let have = sel.filter(s=>hasFeature(s,d.feature)).length;
+      while(have < d.count){
+        const cands = sel.filter(s=>!hasFeature(s,d.feature));
+        if(!cands.length) break;
+        const cand = cands[Math.floor(rng()*cands.length)];
+        const color = isBlue(cand) ? blue : red;
+        const repl = color.filter(s=>hasFeature(s,d.feature) && sel.indexOf(s)<0);
+        if(!repl.length) break;
+        sel.splice(sel.indexOf(cand),1);
+        sel.push(repl[Math.floor(rng()*repl.length)]);
+        have++;
+      }
+    }
+    return sel;
+  }
+
+  function chooseTiles(pool, nOpen, ratio, wantWh, rng, demand){
     const blue = pool.filter(isBlue), red = pool.filter(isRed);
     let nB = Math.round(nOpen*ratio); nB = Math.max(0, Math.min(nB, blue.length));
     let nR = nOpen-nB;
     if(nR > red.length){ nR = red.length; nB = Math.min(nOpen-nR, blue.length); }
     const build = ()=>shuffle(blue.slice(),rng).slice(0,nB).concat(shuffle(red.slice(),rng).slice(0,nR));
-    if(!wantWh) return build();
+    if(!wantWh && !(demand||[]).some(d=>d.feature.kind==="wormhole")) return ensureFeatures(build(), blue, red, demand||[], rng);
     const aOf = sel=>sel.filter(x=>x.wormhole===WORMHOLES.ALPHA).length;
     const bOf = sel=>sel.filter(x=>x.wormhole===WORMHOLES.BETA).length;
     for(let t=0;t<300;t++){
-      const sel=balanceWormholes(build(), blue, red, true, rng);
+      const sel=ensureFeatures(balanceWormholes(build(), blue, red, true, rng), blue, red, demand||[], rng);
       const a=aOf(sel), b=bOf(sel);
       if(a===b && a>=1) return sel;   // garantiert mindestens ein korrektes Paar
     }
     // Notfall (praktisch nie): Wormholes durch gleichfarbige Nicht-Wormholes ersetzen
-    const sel=build(), used={}; sel.forEach(t=>used[t.id]=1);
+    const sel=ensureFeatures(build(), blue, red, demand||[], rng), used={}; sel.forEach(t=>used[t.id]=1);
     const repl=(blueFlag)=>(blueFlag?blue:red).filter(x=>x.wormhole===null && !used[x.id]);
     return sel.map(t=>{
       if(t.wormhole===null) return t;
@@ -207,14 +329,29 @@
   }
 
   function randomFill(st, rng){
-    const place={}, pool=st.pool.slice(), order=shuffle(st.opens.slice(),rng);
+    const place={}, pool=st.pool.slice(), order=shuffle(st.opens.slice(),rng), pinned=new Set();
+    // 1) Fraktionsbedarf zuerst: ein Merkmals-Tile in Reichweite (<=2 Felder) des Heimatsystems.
+    for(const r of (st.reqs||[])){
+      let done=false;
+      for(const pos of shuffle(r.positions.slice(),rng)){
+        if(place[pos]) continue;
+        for(const t of shuffle(pool.filter(x=>hasFeature(x,r.feature)),rng)){
+          if(!sysConflicts(st,place,pos,t)){ place[pos]=t; pool.splice(pool.indexOf(t),1); pinned.add(t.id); done=true; break; }
+        }
+        if(done) break;
+      }
+      if(!done) return null;   // Bedarf nicht platzierbar -> neuer Versuch
+    }
+    // 2) Rest zufaellig fuellen.
     for(const pos of order){
+      if(place[pos]) continue;
       shuffle(pool,rng);
       let chosen=null;
       for(const t of pool){ if(!sysConflicts(st,place,pos,t)){ chosen=t; break; } }
       if(!chosen) return null;
       place[pos]=chosen; pool.splice(pool.indexOf(chosen),1);
     }
+    st.pinned=pinned;   // Garantie-Tiles bleiben waehrend der Optimierung fixiert
     return place;
   }
 
@@ -230,6 +367,7 @@
   }
 
   function swapLegal(st, place, a, b){
+    if(st.pinned && (st.pinned.has(place[a].id) || st.pinned.has(place[b].id))) return false;  // Garantie-Tiles fixiert
     const A=place[a], B=place[b];
     place[a]=B; place[b]=A;
     const ok = !sysConflicts(st,place,a,place[a]) && !sysConflicts(st,place,b,place[b]);
@@ -374,6 +512,7 @@
       let cur=res[0], curMax=res[1];
       for(const pos of keys){
         const old=place[pos], oldBlue=isBlue(old), oldWh=old.wormhole;
+        if(st.pinned && st.pinned.has(old.id)) continue;   // Garantie-Tile nicht antasten
         for(const t of bank.slice()){
           if(t.id===old.id || isBlue(t)!==oldBlue || t.wormhole!==oldWh) continue;
           if(bank.indexOf(t)<0) continue;              // schon verbraucht
@@ -482,7 +621,11 @@
 
       const T=(y,txt,size,fillc,w)=>`<text x="${cx}" y="${y}" font-size="${size}" fill="${fillc}" text-anchor="middle" font-family="sans-serif"${w?' font-weight="bold"':''}>${txt}</text>`;
       if(c.type===TYPE.HOME){
-        content += T(cy-2, "HOME", 10, "#dff5e1") + T(cy+15, hv[c.key], 16, "#fff", true);
+        const hi=st.homes.indexOf(c.key);
+        const fac=(st.factionNames && st.factionNames[hi]) ? shortFaction(st.factionNames[hi]) : null;
+        content += T(cy-16, "HOME", 10, "#dff5e1")
+                 + (fac ? T(cy-4, esc(fac), 10, "#ffe9a8") : "")
+                 + T(cy+15, hv[c.key], 16, "#fff", true);
       } else if(c.type===TYPE.REX){
         content += T(cy-6, "MECATOL", 9, "#ffe9a8") + T(cy+9, "1/6", 10, "#fff");
       } else if(c.type===TYPE.WARP){
@@ -545,9 +688,41 @@
   }
   function setStatus(t){ $("status").textContent=t; }
 
+  // ---- Faktions-Auswahl (UI) ----
+  // Pro Spieler ein Dropdown; nur Fraktionen der aktivierten Erweiterungen.
+  function enabledFactions(){
+    return FACTIONS.filter(f => f.exp==="base" ? $("base").checked : (f.exp==="pok" ? $("pok").checked : $("te").checked));
+  }
+  function fillFactions(){
+    const box=$("factions"); if(!box) return;
+    const n=+$("players").value, prev=readFactions()||[];
+    box.innerHTML="";
+    if(!$("useFactions").checked) return;
+    for(let i=0;i<n;i++){
+      const row=document.createElement("div"); row.className="frow";
+      const lab=document.createElement("span"); lab.textContent="Spieler "+(i+1); row.appendChild(lab);
+      const sel=document.createElement("select"); sel.className="fsel";
+      const none=document.createElement("option"); none.value=""; none.textContent="—"; sel.appendChild(none);
+      for(const f of enabledFactions()){ const o=document.createElement("option"); o.value=f.name; o.textContent=f.name+(factionNeed(f.name)?" *":""); sel.appendChild(o); }
+      sel.value = prev[i] && enabledFactions().some(f=>f.name===prev[i]) ? prev[i] : "";
+      row.appendChild(sel); box.appendChild(row);
+    }
+  }
+  function readFactions(){
+    if(!$("useFactions") || !$("useFactions").checked) return null;
+    const sels=$("factions") ? $("factions").querySelectorAll("select") : [];
+    return Array.prototype.map.call(sels, s=>s.value||null);
+  }
+
   function shortName(t){
     return t==="Simple Slice"?"Slice":t==="Joebrew"?"Joebrew":t==="Resource Access"?"Res":
            t==="Influence Access"?"Inf":t==="Tech Access"?"Tech":t;
+  }
+  function shortFaction(n){
+    if(!n) return "";
+    const m={ "The Embers of Muaat":"Muaat", "The Clan of Saar":"Saar", "The Empyrean":"Empyrean",
+              "The Vuil'raith Cabal":"Vuil'raith", "The Ghosts of Creuss":"Creuss" };
+    return m[n] || n.replace(/^The /,"");
   }
 
   function paint(){
@@ -570,24 +745,29 @@
     pills += `<span class="pill ${maxRel<=0.02?"good":"warn"}">Max Gap <b>${(maxRel*100).toFixed(1)}%</b></span>`;
     const side=oneSided(rel, prep, 0.02);
     pills += `<span class="pill ${side.length?"warn":"good"}">Einseitig <b>${side.length?side.join(", "):"keine"}</b></span>`;
+    const frep=featureReport(st, place);
+    frep.forEach(r=>{ pills += `<span class="pill ${r.ok?"good":"bad"}">${shortFaction(r.name)}: ${r.feature} <b>${r.ok?"in Reichweite":"fehlt"}</b></span>`; });
     $("stats").innerHTML = pills;
-    setStatus(side.length
-      ? `Volloptimiert über alle ${prep.length} Bewertungen – Rest: ${side.join(", ")}. „Karte generieren“ liefert evtl. eine noch flachere Variante.`
-      : `Volloptimiert: alle ${prep.length} Bewertungen ausgeglichen (max. Gap ${(maxRel*100).toFixed(1)}%). Home-Werte (${prep[selIdx].name}): ${vals.join(" / ")}`);
+    const fbad=frep.filter(r=>!r.ok);
+    setStatus((side.length
+      ? `Volloptimiert über alle ${prep.length} Bewertungen – Rest: ${side.join(", ")}.`
+      : `Volloptimiert: alle ${prep.length} Bewertungen ausgeglichen (max. Gap ${(maxRel*100).toFixed(1)}%).`)
+      + (frep.length ? (fbad.length ? ` Faktionsbedarf offen: ${fbad.map(r=>shortFaction(r.name)+" ("+r.feature+")").join(", ")}.` : ` Faktionsbedarf erfüllt: ${frep.map(r=>shortFaction(r.name)+"→"+r.feature).join(", ")}.`) : "")
+      + ` Home-Werte (${prep[selIdx].name}): ${vals.join(" / ")}`);
   }
 
   // Vollautomatische Karten-Suche ueber mehrere Runden: pro Runde ein frischer
   // Tile-Vorrat + komplette Optimierung ueber ALLE Bewertungen. Ein Gesamtbudget
   // wird auf die Runden verteilt; abgebrochen wird, sobald nichts mehr einseitig ist.
   // Liefert { st, prep, res, mx } oder null; bei zu kleinem Pool { error:"tiles", ... }.
-  function generateRounds(title, pool, ratio, wantWh, rng, totalMs, targetRel, maxRounds){
+  function generateRounds(title, pool, ratio, wantWh, rng, totalMs, targetRel, maxRounds, factions){
     const t0=performance.now(), rounds=Math.max(1, maxRounds||4);
     let best=null;
     for(let r=0; r<rounds; r++){
       const left=totalMs-(performance.now()-t0);
       if(left<600 && best) break;
-      const st=buildState(title, pool, evSlice());
-      st.pool=chooseTiles(pool, st.opens.length, ratio, wantWh, rng);
+      const st=buildState(title, pool, evSlice(), factions);
+      st.pool=chooseTiles(pool, st.opens.length, ratio, wantWh, rng, featureDemand(st));
       if(st.pool.length<st.opens.length) return { error:"tiles", have:st.pool.length, need:st.opens.length };
       st.allPool=pool;
       const Es=prepareEvals(st);
@@ -606,15 +786,19 @@
     const title=$("layout").value;
     const pool=buildPool($("base").checked,$("pok").checked,$("te").checked);
     if(!pool.length){ setStatus("Kein Tile-Vorrat (Erweiterung wählen)."); return; }
+    const factions=readFactions();
+    const miss=missingFeatures(pool, factions);
+    if(miss.length){ setStatus("Tile-Vorrat enthält nicht: "+miss.join(", ")+". Passende Erweiterung anhaken (Anomalien sind im Grundspiel enthalten)."); return; }
     setStatus("Berechne & optimiere über alle Bewertungen …"); $("generate").disabled=true;
     setTimeout(()=>{
       try{
         const rng=mulberry32((Math.random()*1e9)|0);
-        const ratio=(+$("ratio").value)/100, wantWh=$("wh").checked;
+        const ratio=(+$("ratio").value)/100;
+        const needWh = $("wh").checked || (factions||[]).some(n=>factionNeed(n) && factionNeed(n).kind==="wormhole");
         const layout=default_layouts.find(l=>l.title===title);
         const nOpen=layout ? layout.data.filter(c=>c.type===TYPE.OPEN).length : 30;
         const total=Math.min(10000, 3500 + nOpen*70);
-        const r=generateRounds(title, pool, ratio, wantWh, rng, total, 0.02, 4);
+        const r=generateRounds(title, pool, ratio, needWh, rng, total, 0.02, 4, factions);
         if(r && r.error){ setStatus(`Zu wenige Tiles (${r.have}/${r.need}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
         if(!r){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
         cur={ st:r.st, place:r.res.place, prep:r.prep, gaps:r.res.gaps };
@@ -659,16 +843,18 @@
     img.src=url;
   }
 
-  $("players").addEventListener("change", fillLayouts);
+  $("players").addEventListener("change", ()=>{ fillLayouts(); fillFactions(); });
   $("ratio").addEventListener("input", ()=>{ $("ratioVal").textContent=$("ratio").value; });
   $("evaluator").addEventListener("change", onEvaluatorChange);
   $("generate").addEventListener("click", generate);
   $("improve").addEventListener("click", improve);
   $("png").addEventListener("click", downloadPNG);
   $("copy").addEventListener("click", ()=>{ const el=$("mapstring"); el.select(); navigator.clipboard.writeText(el.value); setStatus("Map-String kopiert."); });
+  if($("useFactions")) $("useFactions").addEventListener("change", fillFactions);
+  ["base","pok","te"].forEach(id=>{ if($(id)) $(id).addEventListener("change", fillFactions); });
 
-  fillLayouts(); fillEvaluators();
+  fillLayouts(); fillEvaluators(); fillFactions();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions }; }
 })();

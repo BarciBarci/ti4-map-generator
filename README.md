@@ -25,6 +25,9 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
   vollständiges Paar). Da der Optimierer nur gleichfarbige Tiles mit gleichem Wormhole-Typ tauscht, bleibt das Paar
   garantiert erhalten.
 - Legalität wird erzwungen: keine zwei Anomalien benachbart, keine zwei gleichen Wormholes benachbart.
+- **Faktionen berücksichtigen (optional):** sichert je gewählter Fraktion das vorteilhafte Kartenmerkmal
+  (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
+  **in Reichweite** des jeweiligen Heimatsystems – siehe Abschnitt unten.
 - Ausgabe: gerenderte Karte (**PNG**- oder SVG-Download), **Map-String** (kompatibel mit TI4 Map Lab / TTS / keeganw),
   Statistik (Blue/Red, Resources/Influence, Tech, Traits R/G/B, Wormholes) und die Home-Werte.
 
@@ -40,6 +43,7 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 | `Gap <Evaluator>` | **Gap** = größter minus kleinster Home-Wert unter allen Spielern (in Einheiten des Evaluators). |
 | `Max Gap` | größter **relativer** Gap über alle Evaluatoren in % (siehe unten). |
 | `Einseitig` | Evaluatoren, deren relativer Gap über der Zielschwelle (2 %) liegt – „hier ist es noch schief“. |
+| `<Fraktion>: <Merkmal>` | Ob das fraktionsspezifische Merkmal in Reichweite des Heimatsystems liegt (`in Reichweite` / `fehlt`). |
 
 ## Lokal starten
 
@@ -92,6 +96,55 @@ git push -u origin main
   angezeigt – die App beschönigt nichts).
 - **„Balance verbessern“** optimiert die bestehende Karte weiter (Swaps + Bank-Tausche über alle fünf Evaluatoren).
 
+## Faktionen berücksichtigen
+
+Option **„Faktionen berücksichtigen“**: pro Spieler eine Fraktion wählen. Der Generator sichert dann das
+**fraktionsspezifische, vorteilhafte Kartenmerkmal** und legt es **in Reichweite (≤ 2 Felder)** des jeweiligen
+Heimatsystems ab – fehlt es, wird die Fraktion benachteiligt.
+
+| Fraktion | benötigtes Merkmal |
+| --- | --- |
+| The Embers of Muaat | Supernova |
+| The Clan of Saar | Asteroidenfeld |
+| The Empyrean | Nebel |
+| The Vuil'raith Cabal | Gravitationsriss |
+| The Ghosts of Creuss | α/β-Wormhole |
+
+### Was dabei berücksichtigt wird (Algorithmus)
+
+1. **Vorrat:** `chooseTiles` erzwingt, dass genügend Merkmals-Tiles in der Auswahl sind (`ensureFeatures`).
+   Es wird ein **farbgleiches** Tile ersetzt, damit das Blue/Red-Verhältnis erhalten bleibt.
+2. **Konstruktion:** `randomFill` platziert die Merkmals-Tiles **zuerst** auf einem Feld **≤ 2 Zügen** vom
+   Heimatsystem (`reachPositions`; andere Heimatsysteme und Mecatol werden nicht durchquert – entspricht
+   KeeganWs `SLICE_DISTANCE = 2`). Gelingt das nicht, wird der Versuch verworfen und neu gewürfelt.
+3. **Fixierung:** die so platzierten Tiles werden **gepinnt**. `swapLegal` (Tausch-Suche) und `bankClimb`
+   (Bank-Tausch) lassen sie unangetastet – die Balance-Optimierung kann sie also nicht mehr aus der
+   Reichweite schieben, während alle übrigen Tiles normal optimiert werden.
+4. **Wormholes:** wird Creuss gewählt, wird die α/β-Paar-Garantie auch dann erzwungen, wenn die Option
+   „Wormholes als Paare“ ausgeschaltet ist.
+5. **Anzeige/Prüfung:** `featureReport` prüft nach der Optimierung je Fraktion „in Reichweite“ (Pill
+   grün/rot, Fraktionskürzel am Heimatsystem). `test.js` verifiziert das für 4/5/6 Spieler.
+
+**Bewusste Grenzen:** Es wird *ein* Garantie-Tile je Bedarf fixiert (keine ganzen Slices); die weiche
+Balance läuft weiter über die fünf Evaluatoren. Discordant-Stars-Fraktionen (z. B. Nivyn Star Kings,
+benötigt ebenfalls einen Gravitationsriss) sind nicht enthalten, weil unsere Tile-Daten keine DS-Tiles kennen.
+
+### Quelle
+
+Die Zuordnung stammt aus **KeeganW/ti4**, Option *„Ensure Faction Anomalies“* (`src/options/MapOptions.js`),
+sowie die Slice-Balance aus `src/helpers/Slices.js` (Gewichte: resources 1 / influence 1 / planets 0.25 /
+anomalies 1, Slice = 2 Hops):
+
+- https://github.com/KeeganW/ti4
+- https://github.com/KeeganW/ti4/blob/master/src/options/MapOptions.js
+- https://github.com/KeeganW/ti4/blob/master/src/helpers/Slices.js
+
+Das ist **kein offizielles FFG/Asmodee-Dokument**, sondern ein Community-Standard. Creuss ist in KeeganWs
+Liste nicht enthalten; der Wormhole-Bedarf folgt direkt aus seiner Fähigkeit („behandelt alle Systeme mit
+alpha-/beta-Wormhole als benachbart“). Weitere geprüfte Quellen zum Umfeld: `acodcha/ti4-cartographer`
+(Layout-Eigenschaften + empfohlene Aggression/VP) und `daveah/ti4_planet_selection` (Ressourcen-/Influence-,
+max. 1 Wormhole pro Spieler).
+
 ## Daten aktualisieren
 
 `data.js` wird aus dem Map-Lab-Repo erzeugt:
@@ -103,7 +156,7 @@ python3 build_data.py
 ## Test & Benchmark
 
 ```bash
-# Vollständige Prüfung aller Layouts: Gaps, legale Platzierung, Wormhole-Paare, keine Tile-Dubletten
+# Vollständige Prüfung: Gaps, legale Platzierung, Wormhole-Paare, keine Tile-Dubletten + Faktions-Garantien
 node test.js 4000        # optional: Zeitbudget in ms pro Karte
 
 # Benchmark der App-Pipeline (generateRounds) über alle Layouts

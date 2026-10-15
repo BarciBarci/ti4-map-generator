@@ -62,6 +62,13 @@
     </div>
 
     <div class="field">
+      <label class="check"><input type="checkbox" id="useFactions"> Faktionen berücksichtigen</label>
+      <div id="factions" class="factions"></div>
+      <p class="note">Sichert je Fraktion das vorteilhafte Merkmal <b>in Reichweite</b> (≤2 Felder):
+        Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole.</p>
+    </div>
+
+    <div class="field">
       <label for="evaluator">Evaluator (Bewertung)</label>
       <select id="evaluator"></select>
     </div>
@@ -86,6 +93,9 @@
       <p>Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und
         Wormhole-Paare bleiben dabei immer erhalten. Ergebnis wird in den Pillen als
         <b>Gap</b> je Bewertung und als <b>Einseitig</b> angezeigt.</p>
+      <p>Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte
+        Merkmal ins eigene Gebiet gelegt (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel,
+        Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert.</p>
     </details>
   </section>
 
