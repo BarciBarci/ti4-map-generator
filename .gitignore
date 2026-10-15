@@ -4,6 +4,6 @@ npm-debug.log*
 __pycache__/
 *.pyc
 
-# Build-Artefakte / lokal
+# lokal / temporär
 preview.svg
-*.png
+ti4-map.png

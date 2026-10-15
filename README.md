@@ -5,6 +5,8 @@ und den passenden **Map-String** sowie eine gerenderte Übersicht ausgibt.
 
 Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joepinion/ti4-map-lab) (CC BY-SA 4.0).
 
+![Beispielkarte](screenshot.png)
+
 ## Features
 
 - Spielerzahlen **3–6**, jeweils mit mehreren Layouts (Standard / Skinny / Settlers / Warp / Large Galaxy).
@@ -68,6 +70,13 @@ python3 build_data.py
 
 ```bash
 node test.js   # prüft alle Layouts auf Gap 0, legale Platzierung, Wormhole-Paare und Rendering
+```
+
+## Screenshot / Beispielkarte neu erzeugen
+
+```bash
+node tools/export_map.js        # schreibt tools/map.json (Beispielkarte)
+python3 tools/make_screenshot.py # rendert screenshot.png (1200x630, Pillow)
 ```
 
 ## Credits & Lizenz

@@ -260,41 +260,69 @@
 
   // ---- Rendering ----
   function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  const TRAIT_FILL = {};
+  TRAIT_FILL[PLANET_TRAITS.HAZARDOUS]="#c0392b";
+  TRAIT_FILL[PLANET_TRAITS.INDUSTRIAL]="#27ae60";
+  TRAIT_FILL[PLANET_TRAITS.CULTURAL]="#2980b9";
+  function sysGlyphs(sys){
+    const g=[];
+    if(sys.anomalies!==null) g.push(sys.anomalies.map(a=>ANOM_LABEL[a]).join("/"));
+    if(sys.wormhole!==null) g.push(sys.wormhole===WORMHOLES.ALPHA?"α":"β");
+    if(LEGENDARY.indexOf(sys.id)>=0) g.push("★");
+    if(STATION.indexOf(sys.id)>=0) g.push("⌂");
+    return g;
+  }
   function render(st, place, vals){
-    const S=26, SQ=Math.sqrt(3);
+    const S=30, SQ=Math.sqrt(3);
     const proj=c=>[SQ*S*(c.x+c.z/2), 1.5*S*c.z];
     const pts={}; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
     for(const c of st.cells){ const p=proj(c); pts[c.key]=p;
       minx=Math.min(minx,p[0]); maxx=Math.max(maxx,p[0]); miny=Math.min(miny,p[1]); maxy=Math.max(maxy,p[1]); }
-    const ox=-minx+S*1.2, oy=-miny+S*1.2, wd=maxx-minx+S*2.4, ht=maxy-miny+S*2.4;
+    const ox=-minx+S*1.15, oy=-miny+S*1.15, wd=maxx-minx+S*2.3, ht=maxy-miny+S*2.3;
     const vtx=[[0,-S],[SQ/2*S,-S/2],[SQ/2*S,S/2],[0,S],[-SQ/2*S,S/2],[-SQ/2*S,-S/2]];
     const hv={}; st.homes.forEach((h,i)=>hv[h]=vals[i]);
-    let body="";
+    let fills="", content="";
     for(const c of st.cells){
-      const p=pts[c.key], cx=p[0]+ox, cy=p[1]+oy;
+      const p=pts[c.key], cx=+(p[0]+ox).toFixed(1), cy=+(p[1]+oy).toFixed(1);
       const poly=vtx.map(v=>`${(cx+v[0]).toFixed(1)},${(cy+v[1]).toFixed(1)}`).join(" ");
-      let fill="#15151f", label="", sub="", idtxt="";
+      let fill="#141420";
       const sys=place[c.key];
-      if(c.type===TYPE.HOME){ fill="#1f7a33"; label="HOME"; sub=String(hv[c.key]); }
-      else if(c.type===TYPE.REX){ fill="#b8912a"; label="MECATOL"; }
-      else if(c.type===TYPE.CLOSED){ fill="#0a0a10"; }
-      else if(c.type===TYPE.WARP){ fill="#101018"; sub="⟡"; }
-      else if(c.type===TYPE.OPEN && sys){
-        fill=isRed(sys)?"#a4483f":"#3f6fb5";
-        idtxt=String(sys.id);
-        const parts=[];
-        for(const pl of sys.planets){ let t=""; if(pl.tech_specialties) for(const ts of pl.tech_specialties) t+=TECH_LETTER[ts];
-          parts.push(`${pl.resources}/${pl.influence}${t?" "+t:""}`); }
-        if(sys.anomalies!==null) parts.push(sys.anomalies.map(a=>ANOM_LABEL[a]).join("/"));
-        if(sys.wormhole!==null) parts.push(sys.wormhole===WORMHOLES.ALPHA?"α":"β");
-        label=parts.join("  |  ");
+      if(c.type===TYPE.HOME) fill="#1f7a33";
+      else if(c.type===TYPE.REX) fill="#7a6118";
+      else if(c.type===TYPE.CLOSED) fill="#08080d";
+      else if(c.type===TYPE.WARP) fill="#0d0d16";
+      else if(c.type===TYPE.OPEN && sys) fill = isRed(sys)?"#572c27":"#1f3a63";
+      fills += `<polygon points="${poly}" fill="${fill}" stroke="#000" stroke-width="1"/>`;
+
+      const T=(y,txt,size,fillc,w)=>`<text x="${cx}" y="${y}" font-size="${size}" fill="${fillc}" text-anchor="middle" font-family="sans-serif"${w?' font-weight="bold"':''}>${txt}</text>`;
+      if(c.type===TYPE.HOME){
+        content += T(cy-2, "HOME", 10, "#dff5e1") + T(cy+15, hv[c.key], 16, "#fff", true);
+      } else if(c.type===TYPE.REX){
+        content += T(cy-6, "MECATOL", 9, "#ffe9a8") + T(cy+9, "1/6", 10, "#fff");
+      } else if(c.type===TYPE.WARP){
+        content += T(cy+5, "⟡", 14, "#5a5a78");
+      } else if(c.type===TYPE.OPEN && sys){
+        content += T(cy-17, sys.id, 9, "#a9bad6");
+        const ps=sys.planets, n=ps.length;
+        const spacing = n>1 ? Math.min(S*0.55, (S*1.15)/(n-1)) : 0;
+        const discR = n>1 ? Math.min(8.5, spacing*0.42) : 8.5;
+        const startX = cx - (n-1)*spacing/2;
+        ps.forEach((pl,i)=>{
+          const px=+(startX+i*spacing).toFixed(1), py=+(cy-2).toFixed(1);
+          const tf=(pl.traits&&pl.traits.length)?TRAIT_FILL[pl.traits[0]]:"#7f8c8d";
+          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${tf}" stroke="#000" stroke-width="0.8"/>`;
+          if(pl.tech_specialties && pl.tech_specialties.length){
+            const bx=(px+discR*0.75).toFixed(1), by=(py-discR*0.75).toFixed(1);
+            content += `<circle cx="${bx}" cy="${by}" r="4.2" fill="#101010" stroke="#e8e8f0" stroke-width="0.6"/>`
+                     + `<text x="${bx}" y="${(+by+2.2).toFixed(1)}" font-size="6" fill="#fff" text-anchor="middle" font-family="sans-serif">${TECH_LETTER[pl.tech_specialties[0]]||""}</text>`;
+          }
+          content += `<text x="${px}" y="${(py+discR+8).toFixed(1)}" font-size="7.5" fill="#dfe7f5" text-anchor="middle" font-family="sans-serif">${pl.resources}/${pl.influence}</text>`;
+        });
+        const g=sysGlyphs(sys);
+        if(g.length) content += T(cy+21, g.join(" "), 8, "#ffd479");
       }
-      body+=`<polygon points="${poly}" fill="${fill}" stroke="#000" stroke-width="1"/>`;
-      if(idtxt) body+=`<text x="${cx.toFixed(1)}" y="${(cy-6).toFixed(1)}" font-size="10" fill="#e8e8f0" text-anchor="middle" font-family="sans-serif">${idtxt}</text>`;
-      if(label) body+=`<text x="${cx.toFixed(1)}" y="${(cy+4).toFixed(1)}" font-size="7.5" fill="#f0f0f0" text-anchor="middle" font-family="sans-serif">${esc(label)}</text>`;
-      if(sub && c.type!==TYPE.OPEN) body+=`<text x="${cx.toFixed(1)}" y="${(cy+17).toFixed(1)}" font-size="13" fill="#fff" text-anchor="middle" font-family="sans-serif" font-weight="bold">${sub}</text>`;
     }
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${wd|0}" height="${ht|0}" viewBox="0 0 ${wd|0} ${ht|0}"><rect width="100%" height="100%" fill="#07070c"/>${body}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${wd|0}" height="${ht|0}" viewBox="0 0 ${wd|0} ${ht|0}"><rect width="100%" height="100%" fill="#07070c"/>${fills}${content}</svg>`;
   }
 
   // ---- Map-String & Statistik ----
@@ -308,7 +336,7 @@
     let res=0,inf=0,tech="",haz=0,ind=0,cul=0;
     for(const s of systems) for(const p of s.planets){
       res+=p.resources; inf+=p.influence;
-      if(p.tech_specialties) for(const ts of p.tech_specialties) tech+=TECH_LETTER[ts];
+      if(p.tech_specialties) for(const ts of p.tech_specialties){ const L=TECH_LETTER[ts]; if(L) tech+=L; }
       if(p.traits) for(const tr of p.traits){ if(tr===PLANET_TRAITS.HAZARDOUS)haz++; else if(tr===PLANET_TRAITS.INDUSTRIAL)ind++; else if(tr===PLANET_TRAITS.CULTURAL)cul++; }
     }
     tech=tech.split("").sort().join("");
@@ -414,5 +442,5 @@
   fillLayouts(); fillEvaluators();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, optimize, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, LAYOUTS, SYS, default_evaluators }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, optimize, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators }; }
 })();
