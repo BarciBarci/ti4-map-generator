@@ -43,10 +43,11 @@ def proj(c, S):
 
 xs = [proj(c, 1)[0] for c in cells]; ys = [proj(c, 1)[1] for c in cells]
 spanx = max(xs) - min(xs); spany = max(ys) - min(ys)
-S = min((W - 60) / (spanx + math.sqrt(3) * 2.2), (H - HEAD - 40) / (spany + 3.0))
+LEG_H = 112
+S = min((W - 60) / (spanx + math.sqrt(3) * 2.2), (H - HEAD - LEG_H - 20) / (spany + 3.0))
 minx, miny = min(xs) * S, min(ys) * S
 offx = (W - spanx * S) / 2 - minx
-offy = HEAD + (H - HEAD - 40 - spany * S) / 2 - miny + 40
+offy = HEAD + (H - HEAD - LEG_H - 20 - spany * S) / 2 - miny + 20
 
 def xy(c):
     p = proj(c, S)
@@ -87,7 +88,7 @@ for c in cells:
         ctext(cx, cy - 12, "MECATOL", F_MEC, (255, 233, 168))
         ctext(cx, cy + 10, "1/6", F_SMALL, (255, 255, 255))
     elif t == 5:
-        ctext(cx, cy, "~", F_SUB, (90, 90, 120))
+        ctext(cx, cy, "\u25c7", F_SUB, (90, 90, 120))
     elif t == 1 and sys:
         s = systems[str(sys)]
         ctext(cx, cy - S * 0.50, sys, F_ID, (169, 186, 214))
@@ -108,7 +109,55 @@ for c in cells:
         if s["wormhole"]: glyphs.append(s["wormhole"])
         if glyphs: ctext(cx, cy + S * 0.60, " ".join(glyphs), F_SMALL, (255, 212, 121))
 
-d.text((28, H - 22), "gezeichnete Tiles \u00b7 Fan-Projekt \u00b7 Layouts/Tile-Daten: TI4 Map Lab (CC BY-SA 4.0)",
+# ---- Legende unter der Karte ----
+LEG_TOP = H - LEG_H
+d.line((0, LEG_TOP - 1, W, LEG_TOP - 1), fill=(42, 42, 61))
+MUTED = (154, 154, 176); FG = (232, 232, 240); GLYPH_C = (255, 212, 121)
+
+def legend_row(y, items):
+    x = 28.0
+    for it in items:
+        kind = it[0]
+        if kind == "badge":
+            ch, txt = it[1], it[2]
+            d.ellipse((x, y - 7, x + 14, y + 7), fill=(16, 16, 16), outline=(230, 230, 240))
+            ctext(x + 7, y, ch, F_SMALL, (255, 255, 255)); x += 18
+            d.text((x, y - 7), txt, font=F_SMALL, fill=MUTED); x += d.textlength(txt, font=F_SMALL) + 16
+        elif kind == "dot":
+            col, txt = it[1], it[2]
+            d.ellipse((x, y - 6, x + 12, y + 6), fill=col, outline=(0, 0, 0))
+            x += 16
+            d.text((x, y - 7), txt, font=F_SMALL, fill=MUTED); x += d.textlength(txt, font=F_SMALL) + 16
+        elif kind == "glyph":
+            g, txt = it[1], it[2]
+            d.text((x, y - 7), g, font=F_SMALL, fill=GLYPH_C); x += d.textlength(g, font=F_SMALL) + 5
+            d.text((x, y - 7), txt, font=F_SMALL, fill=MUTED); x += d.textlength(txt, font=F_SMALL) + 16
+        else:
+            txt = it[1]
+            d.text((x, y - 7), txt, font=F_SMALL, fill=MUTED); x += d.textlength(txt, font=F_SMALL) + 16
+
+legend_row(LEG_TOP + 22, [
+    ("badge", "R", "Warfare"), ("badge", "B", "Propulsion"), ("badge", "G", "Biotic"), ("badge", "Y", "Cybernetic"),
+    ("text", "= Tech-Spezialisierung (Kreis am Planeten)"),
+    ("text", "|  3/1 = Ressourcen/Influence"),
+])
+legend_row(LEG_TOP + 48, [
+    ("dot", (192, 57, 43), "Hazardous"), ("dot", (39, 174, 96), "Industrial"), ("dot", (41, 128, 185), "Cultural"),
+    ("text", "= Planetentyp"),
+    ("glyph", "SN", "Supernova"), ("glyph", "GR", "Gravitationsriss"), ("glyph", "NEB", "Nebel"),
+    ("glyph", "AST", "Asteroidenfeld"), ("glyph", "ES", "Entropic Scar"),
+])
+legend_row(LEG_TOP + 74, [
+    ("glyph", "\u03b1\u03b2", "Wormhole alpha/beta"),
+    ("glyph", "\u2605", "legend\u00e4rer Planet"),
+    ("glyph", "\u2302", "Raumstation"),
+    ("glyph", "\u25c7", "Warprand (leer)"),
+    ("dot", (31, 122, 51), "HOME"), ("dot", (122, 97, 24), "Mecatol"),
+    ("dot", (31, 58, 99), "besiedelbar (blau)"), ("dot", (87, 44, 39), "leer/Anomalie (rot)"),
+    ("text", "|  kleine Zahl oben = Tile-Nummer"),
+])
+
+d.text((28, H - 14), "gezeichnete Tiles \u00b7 Fan-Projekt \u00b7 Layouts/Tile-Daten: TI4 Map Lab (CC BY-SA 4.0)",
        font=F_SMALL, fill=(110, 110, 130))
 
 out = os.path.join(ROOT, "screenshot.png")

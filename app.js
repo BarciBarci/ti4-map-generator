@@ -679,7 +679,7 @@
       } else if(c.type===TYPE.REX){
         content += T(cy-6, "MECATOL", 9, th.rexLabel) + T(cy+9, "1/6", 10, th.value);
       } else if(c.type===TYPE.WARP){
-        content += T(cy+5, "⟡", 14, th.warpGlyph);
+        content += T(cy+5, "◇", 14, th.warpGlyph);
       } else if(c.type===TYPE.OPEN && sys){
         content += T(cy-17, sys.id, 9, th.id);
         const ps=sys.planets, n=ps.length;
@@ -794,6 +794,35 @@
     return m[n] || n.replace(/^The /,"");
   }
 
+  // ---- Legende unter der Karte ----
+  const TECH_DE = {}; TECH_DE[TECH_LETTER[TECH_SPECIALTIES.WARFARE]]="Warfare";
+  TECH_DE[TECH_LETTER[TECH_SPECIALTIES.PROPULSION]]="Propulsion";
+  TECH_DE[TECH_LETTER[TECH_SPECIALTIES.BIOTIC]]="Biotic"; TECH_DE[TECH_LETTER[TECH_SPECIALTIES.CYBERNETIC]]="Cybernetic";
+  const ANOM_DE = { SN:"Supernova", NEB:"Nebel", AST:"Asteroidenfeld", GR:"Gravitationsriss", ES:"Entropic Scar" };
+
+  function legendHTML(){
+    const th = THEMES[currentTheme()] || THEMES.classic;
+    const sw=c=>`<span class="lg-sw" style="background:${c}"></span>`;
+    const badge=t=>`<span class="lg-sw lg-badge" style="background:${th.techFill};border-color:${th.techStroke};color:${th.value}">${t}</span>`;
+    const gl=t=>`<span class="lg-sw lg-glyph" style="color:${th.glyph}">${t}</span>`;
+    const techKeys=["R","B","G","Y"];
+    const anoms=Object.keys(ANOM_LABEL).map(k2=>ANOM_LABEL[k2]);
+    return [
+      `<span class="lg-item">${techKeys.map(badge).join("")}<span class="lg-t">Tech-Spezialisierung: `+
+        techKeys.map(x=>`<b>${x}</b>&nbsp;=&nbsp;${TECH_DE[x]}`).join(", ")+`</span></span>`,
+      `<span class="lg-item"><span class="lg-t">Zahl unter dem Planeten (z.&nbsp;B. <b>3/1</b>) = Ressourcen&nbsp;/&nbsp;Influence</span></span>`,
+      `<span class="lg-item">${sw(th.trait[0])}${sw(th.trait[1])}${sw(th.trait[2])}<span class="lg-t">Planetentyp (Punkt): rot&nbsp;=&nbsp;Hazardous, grün&nbsp;=&nbsp;Industrial, blau&nbsp;=&nbsp;Cultural</span></span>`,
+      `<span class="lg-item">${anoms.map(a=>gl(a)).join("")}<span class="lg-t">Anomalien: `+
+        anoms.map(a=>`<b>${a}</b>&nbsp;=&nbsp;${ANOM_DE[a]||a}`).join(", ")+`</span></span>`,
+      `<span class="lg-item">${gl("α")}${gl("β")}<span class="lg-t">Wormhole: Alpha&nbsp;/&nbsp;Beta</span></span>`,
+      `<span class="lg-item">${gl("★")}${gl("⌂")}<span class="lg-t">legendärer Planet&nbsp;/&nbsp;Raumstation</span></span>`,
+      `<span class="lg-item"><span class="lg-sw lg-num">110</span><span class="lg-t">kleine Zahl oben = System-Tile-Nummer</span></span>`,
+      `<span class="lg-item">${sw(th.home)}${sw(th.rex)}${sw(th.blue)}${sw(th.red)}<span class="lg-t">HOME (Heimatsystem)&nbsp;/&nbsp;Mecatol Rex&nbsp;/&nbsp;blau&nbsp;=&nbsp;besiedelbar&nbsp;/&nbsp;rot&nbsp;=&nbsp;leer oder Anomalie</span></span>`,
+      `<span class="lg-item">${gl("◇")}<span class="lg-t">Warprand (leeres Feld, nur Verbindung)</span></span>`,
+    ].join("");
+  }
+  function renderLegend(){ const el=$("legend"); if(el) el.innerHTML=legendHTML(); }
+
   function paint(){
     const st=cur.st, place=cur.place, prep=cur.prep, s=stats(st,place);
     const selIdx=+$("evaluator").value;
@@ -803,6 +832,7 @@
     const maxRel=Math.max.apply(null,rel);
     $("map").innerHTML=render(st,place,vals,currentTheme());
     if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
+    renderLegend();
     $("mapstring").value=mapString(st,place);
     let pills =
       `<span class="pill">Blue/Red <b>${s.blue}/${s.red}</b></span>`+
@@ -897,6 +927,7 @@
   }
   function onThemeChange(){
     if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
+    renderLegend();
     if(cur) paint();
   }
 
@@ -932,7 +963,8 @@
 
   fillLayouts(); fillEvaluators(); fillFactions(); fillThemes();
   if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
+  renderLegend();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction, legendHTML }; }
 })();

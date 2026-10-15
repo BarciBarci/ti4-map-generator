@@ -167,6 +167,24 @@ alpha-/beta-Wormhole als benachbart“). Weitere geprüfte Quellen zum Umfeld: `
 (Layout-Eigenschaften + empfohlene Aggression/VP) und `daveah/ti4_planet_selection` (Ressourcen-/Influence-,
 max. 1 Wormhole pro Spieler).
 
+## Legende (Symbole auf der Karte)
+
+Unterhalb der Karte steht auf der Webseite eine Legende; dieselbe Erklärung findet sich im Screenshot:
+
+| Symbol | Bedeutung |
+| --- | --- |
+| `R` `B` `G` `Y` (Kreis am Planeten) | Tech-Spezialisierung: Warfare / Propulsion / Biotic / Cybernetic |
+| `3/1` unter dem Planeten | Ressourcen / Influence des Planeten |
+| Punktfarbe des Planeten | rot = Hazardous, grün = Industrial, blau = Cultural |
+| `SN` `GR` `NEB` `AST` `ES` | Anomalien: Supernova, Gravitationsriss, Nebel, Asteroidenfeld, Entropic Scar |
+| `α` / `β` | Alpha- / Beta-Wormhole |
+| `★` / `⌂` | legendärer Planet / Raumstation |
+| kleine Zahl oben | System-Tile-Nummer |
+| `HOME` + Wert | Heimatsystem und sein Home-Wert |
+| `MECATOL 1/6` | Mecatol Rex (1 Ressource / 6 Influence) |
+| `◇` | Warprand (leeres Feld, nur Verbindung) |
+| blaue / rote Fläche | besiedelbares System / leeres System bzw. Anomalie |
+
 ## Designs
 
 Über das Dropdown **„Design“** lässt sich die Optik umschalten (gilt für Karte + Seite):

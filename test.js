@@ -70,3 +70,12 @@ for(const [title,factions,contest,needNb] of fcases){
   if(bad.length||dup||lonely.length){ console.log("   FEHLER", bad.length?"Bedarf unerfüllt":"", lonely.length?("nicht kontestiert: "+lonely.map(x=>x.name).join(",")):"", dup?"Dublette":""); fails++; }
 }
 console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
+
+// ---- Legende ----
+{
+  const lg=T.legendHTML();
+  const want=["Warfare","Propulsion","Biotic","Cybernetic","Supernova","Gravitationsriss","Nebel","Asteroidenfeld","Ressourcen","Wormhole","Tile-Nummer"];
+  const miss=want.filter(w=>lg.indexOf(w)<0);
+  console.log("Legende:", lg.length+" Zeichen", miss.length?("FEHLT: "+miss.join(", ")):"alle Symbole erklärt");
+  if(miss.length){ fails++; console.log("FAILS="+fails); }
+}
