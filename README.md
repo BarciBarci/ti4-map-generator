@@ -108,6 +108,12 @@ node test.js 4000        # optional: Zeitbudget in ms pro Karte
 
 # Benchmark der App-Pipeline (generateRounds) über alle Layouts
 node tools/measure.js
+
+# Analyse: Streuung über verschiedene Tile-Auswahlen (erreichbarer "Boden" je Layout)
+node tools/probe_seeds.js "6-Player" 10 0.60
+
+# Analyse: k-opt-Test – findet LNS (exakte Permutation von k Positionen) noch eine Verbesserung?
+node tools/probe_lns.js 7
 ```
 
 ## Screenshot / Beispielkarte neu erzeugen
