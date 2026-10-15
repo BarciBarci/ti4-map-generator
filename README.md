@@ -29,7 +29,7 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 - **Faktionen berücksichtigen (optional):** sichert je gewählter Fraktion das vorteilhafte Kartenmerkmal
   (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
   **in Reichweite** des jeweiligen Heimatsystems; optional **möglichst auch für die Nachbarn erreichbar**
-  (kontestiert). Eine Fraktion ist nur einmal wählbar – siehe Abschnitt unten.
+  (umkämpfte Randzone). Eine Fraktion ist nur einmal wählbar – siehe Abschnitt unten.
 - **Design-Umschalter:** Classic (dunkel), **Retro 8-Bit** (kräftige Farben, dicke Outlines, Scanlines,
   Monospace) und **Biomech/Giger** (entsättigt, Knochen-/Asche-Töne mit Säuregrün). Vorschauen in `previews/`.
 - Ausgabe: gerenderte Karte (**PNG**- oder SVG-Download), **Map-String** (kompatibel mit TI4 Map Lab / TTS / keeganw),
@@ -109,8 +109,8 @@ wählbar – bereits vergebene Optionen werden in den übrigen Dropdowns deaktiv
 dann das **fraktionsspezifische, vorteilhafte Kartenmerkmal** und legt es **in Reichweite (≤ 2 Felder)** des
 jeweiligen Heimatsystems ab – fehlt es, wird die Fraktion benachteiligt.
 
-Option **„Merkmal möglichst auch für Nachbarn erreichbar“** (kontestiert): das Merkmal wird so platziert, dass
-es möglichst auch die **Nachbarn** erreichen können – gestuft:
+Option **„Merkmal möglichst auch für Nachbarn erreichbar“** (umkämpfte Randzone): das Merkmal wird so platziert,
+dass es möglichst auch die **Nachbarn** erreichen können – gestuft:
 
 | Stufe | Bedeutung |
 | --- | --- |
@@ -119,9 +119,9 @@ es möglichst auch die **Nachbarn** erreichen können – gestuft:
 | `own` | nur eigenes Home (Fallback) |
 
 Gewählt wird die **beste erfüllbare** Stufe; sie wird unter der Karte am Heimatsystem bzw. in der Datenzeile
-angezeigt. Ist der Kontest-Schalter aktiv, wird **kein** stiller Rückfall auf „nur eigenes" gemacht: lässt sich
-für ein Merkmal keine gemeinsame Randzone finden, wird ein neuer Versuch gewürfelt; gibt es im Layout gar keine
-gemeinsame Randzone (z. B. *3-Player Standard/Warp*), meldet die App das ausdrücklich. **Wichtiger Befund**
+angezeigt. Ist der Schalter **„für Nachbarn erreichbar“** aktiv, wird **kein** stiller Rückfall auf „nur eigenes"
+gemacht: lässt sich für ein Merkmal keine gemeinsame Randzone finden, wird ein neuer Versuch gewürfelt; gibt es
+im Layout gar keine gemeinsame Randzone (z. B. *3-Player Standard/Warp*), meldet die App das ausdrücklich. **Wichtiger Befund**
 (`tools/probe_reach.js`): Stufe `both` ist in **keinem** der eingebauten Layouts erfüllbar (Schnittmenge der
 drei Slices = 0), Stufe `near` dagegen in allen außer *3-Player Standard* und *3-Player Warp*. Der Schalter
 bewirkt also real, dass das Merkmal in die **umkämpfte Randzone** zwischen dem eigenen und einem Nachbar-Slice
@@ -141,8 +141,9 @@ gelegt wird statt tief ins eigene Gebiet.
    Es wird ein **farbgleiches** Tile ersetzt, damit das Blue/Red-Verhältnis erhalten bleibt.
 2. **Konstruktion:** `randomFill` platziert die Merkmals-Tiles **zuerst** auf einem Feld **≤ 2 Zügen** vom
    Heimatsystem (`reachPositions`; andere Heimatsysteme und Mecatol werden nicht durchquert – entspricht
-   KeeganWs `SLICE_DISTANCE = 2`). Mit aktivem Kontest-Schalter wird dabei die beste erfüllbare Stufe
-   `both` → `near` → `own` gewählt. Gelingt die Platzierung nicht, wird der Versuch verworfen und neu gewürfelt.
+   KeeganWs `SLICE_DISTANCE = 2`). Mit aktivem Schalter wird dabei die beste erfüllbare Stufe
+   `both` → `near` gewählt (**kein** Rückfall auf `own`). Gelingt die Platzierung nicht, wird der Versuch
+   verworfen und neu gewürfelt.
 3. **Fixierung:** die so platzierten Tiles werden **gepinnt**. `swapLegal` (Tausch-Suche) und `bankClimb`
    (Bank-Tausch) lassen sie unangetastet – die Balance-Optimierung kann sie also nicht mehr aus der
    Reichweite schieben, während alle übrigen Tiles normal optimiert werden.
@@ -150,7 +151,7 @@ gelegt wird statt tief ins eigene Gebiet.
    „Wormholes paarweise“ ausgeschaltet ist.
 5. **Anzeige/Prüfung:** `featureReport` prüft nach der Optimierung je Fraktion die erreichte Stufe
    (`both`/`near`/`own`) bzw. „fehlt“ (Kennzeichnung grün/rot unter der Karte, Fraktionskürzel am
-   Heimatsystem). `test.js` verifiziert das für 4/5/6 Spieler – auch im Kontest-Modus.
+   Heimatsystem). `test.js` verifiziert das für 4/5/6 Spieler – auch im Nachbar-Modus.
 
 **Bewusste Grenzen:** Es wird *ein* Garantie-Tile je Bedarf fixiert (keine ganzen Slices); die weiche
 Balance läuft weiter über die fünf Evaluatoren. Discordant-Stars-Fraktionen (z. B. Nivyn Star Kings,
@@ -278,7 +279,7 @@ node tools/export_map.js        # schreibt tools/map.json (Beispielkarte, inkl. 
 python3 tools/make_screenshot.py # rendert screenshot.png (1200x630, Pillow)
 ```
 
-Das Beispiel nutzt den Kontest-Modus mit sechs Fraktionen; die Fraktionskürzel stehen am Heimatsystem.
+Das Beispiel nutzt den Nachbar-Modus mit sechs Fraktionen; die Fraktionskürzel stehen am Heimatsystem.
 
 ## Credits & Lizenz
 

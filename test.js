@@ -88,8 +88,8 @@ for(const [title,factions,contest,needNb] of fcases){
   const lonely=needNb ? rep.filter(x=>x.reach==="own") : [];
   const ids=Object.values(r.res.place).map(s=>s.id);
   const dup=(new Set(ids).size!==ids.length);
-  console.log((title+(contest?" [contest]":"")).padEnd(26), rep.map(x=>(x.ok?"OK ":"FEHLT ")+x.name+"→"+x.feature+"("+x.reach+")").join(", "));
-  if(bad.length||dup||lonely.length){ console.log("   FEHLER", bad.length?"Bedarf unerfüllt":"", lonely.length?("nicht kontestiert: "+lonely.map(x=>x.name).join(",")):"", dup?"Dublette":""); fails++; }
+  console.log((title+(contest?" [Nachbar]":"")).padEnd(26), rep.map(x=>(x.ok?"OK ":"FEHLT ")+x.name+"→"+x.feature+"("+x.reach+")").join(", "));
+  if(bad.length||dup||lonely.length){ console.log("   FEHLER", bad.length?"Bedarf unerfüllt":"", lonely.length?("nicht umkämpft (nur eigenes): "+lonely.map(x=>x.name).join(",")):"", dup?"Dublette":""); fails++; }
 }
 console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
 

@@ -379,8 +379,8 @@
     // 1) Fraktionsbedarf zuerst. Bei "contest" wird die beste erfuellbare Stufe gewaehlt:
     //    eigenes + beide Nachbarn > eigenes + >=1 Nachbar > nur eigenes.
     for(const r of (st.reqs||[])){
-      // Kontest-Modus: streng only "eigenes + beide Nachbarn" bzw. "eigenes + >=1 Nachbar".
-      // Klappt beides nicht, wird der Versuch verworfen (kein stiller Fallback auf "nur eigenes").
+      // Nachbar-Modus: streng nur "eigenes + beide Nachbarn" bzw. "eigenes + >=1 Nachbar".
+      // Klappt beides nicht, wird der Versuch verworfen (kein stiller Rueckfall auf "nur eigenes").
       const lists = st.contest ? [r.positionsBoth, r.positionsNear] : [r.positions];
       let ok=false;
       for(const l of lists){ if(placeFeatureAt(st, place, pool, rng, l, r.feature, pinned)){ ok=true; break; } }
@@ -962,7 +962,7 @@
       const st=buildState(title, pool, evSlice(), factions, contest);
       if(contest){
         // Layouts ohne gemeinsame Randzone (z. B. 3-Player Standard/Warp) koennen den
-        // Kontest-Modus nicht erfuellen -> klar melden statt "keine Karte gefunden".
+        // Nachbar-Modus nicht erfuellen -> klar melden statt "keine Karte gefunden".
         const bad=(st.reqs||[]).filter(r=>!r.positionsNear || !r.positionsNear.length);
         if(bad.length) return { error:"contest", factions:bad.map(r=>st.factionNames[st.homes.indexOf(r.home)]) };
       }
