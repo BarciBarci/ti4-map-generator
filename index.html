@@ -72,6 +72,21 @@
       <button id="png">Als PNG speichern</button>
       <p id="status" class="status"></p>
     </div>
+
+    <details class="info" open>
+      <summary>Was passiert beim „Karte generieren“?</summary>
+      <ol>
+        <li>Tile-Vorrat ziehen (Blau/Rot-Ziel, Wormholes paarweise).</li>
+        <li>Wiederholt: Zufallskarte → Optimierung über <b>alle fünf</b> Bewertungen
+          (Simple Slice, Joebrew, Resource-, Influence- und Tech-Access) → Bank-Tausche,
+          dazwischen „Kicks“.</li>
+        <li>Ist noch etwas einseitig, wird die Karte mit frischem Tile-Vorrat <b>neu generiert</b>.</li>
+        <li>Abbruch, sobald keine Bewertung mehr über 2&nbsp;% liegt (Dauer grob 4–10&nbsp;s).</li>
+      </ol>
+      <p>Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und
+        Wormhole-Paare bleiben dabei immer erhalten. Ergebnis wird in den Pillen als
+        <b>Gap</b> je Bewertung und als <b>Einseitig</b> angezeigt.</p>
+    </details>
   </section>
 
   <section class="output">

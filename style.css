@@ -32,6 +32,14 @@ button[disabled]{ opacity:.6; cursor:default; }
 
 .status{ font-size:12px; color:var(--muted); min-height:16px; margin:6px 0 0; }
 
+.info{ background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+  padding:10px 12px; font-size:12.5px; color:var(--muted); line-height:1.5; }
+.info > summary{ cursor:pointer; color:var(--fg); font-weight:600; font-size:13px; }
+.info ol{ margin:8px 0 0; padding-left:18px; }
+.info li{ margin:0 0 4px; }
+.info p{ margin:8px 0 0; }
+.info b{ color:var(--fg); }
+
 .stats{ display:flex; flex-wrap:wrap; gap:8px; }
 .pill{ background:var(--panel); border:1px solid var(--line); border-radius:999px;
   padding:6px 12px; font-size:13px; color:var(--muted); }
