@@ -44,10 +44,12 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 | `Tech` | Vorkommende Tech-Spezialisierungen als Buchstaben: **R**=Warfare, **B**=Propulsion, **G**=Biotic, **Y**=Cybernetic. |
 | `Traits R/G/B` | Anzahl roter / grüner / blauer Planeten (Hazardous / Industrial / Cultural). |
 | `Wormholes` | Anzahl je Typ (α/β/δ). Gültig ist **0 oder ≥ 2** pro Typ (ein Einzelnes wäre nutzlos; mehr als 2 sind erlaubt). |
-| `Gap <Evaluator>` | **Gap** = größter minus kleinster Home-Wert unter allen Spielern (in Einheiten des Evaluators). |
+| `Gap <Evaluator>` | **Gap** = größter minus kleinster Home-Wert unter allen Spielern (in Einheiten des Evaluators); `Leer` = Systeme ohne Planeten im Slice. |
 | `Max Gap` | größter **relativer** Gap über alle Evaluatoren in % (siehe unten). |
 | `Einseitig` | Evaluatoren, deren relativer Gap über der Zielschwelle (2 %) liegt – „hier ist es noch schief“. |
 | `<Fraktion>: <Merkmal>` | Erreichte Reichweite des fraktionsspezifischen Merkmals: `+Nachbar` / `+2 Nachbarn` / `nur eigenes` / `fehlt`. |
+| `Wormhole ≤1/Slice` | Ob höchstens ein Wormhole im Slice jedes Spielers liegt (best effort). |
+| `Wormhole am Home` | `keins` / `ja` – ob ein Wormhole direkt an einem Heimatsystem liegt. |
 
 ## Lokal starten
 
@@ -187,6 +189,43 @@ Unterhalb der Karte steht auf der Webseite eine Legende; dieselbe Erklärung fin
 | `MECATOL 1/6` | Mecatol Rex (1 Ressource / 6 Influence) |
 | `◇` | Warprand (leeres Feld, nur Verbindung) |
 | blaue / rote Fläche | besiedelbares System / leeres System bzw. Anomalie |
+
+## Balancing-Dimensionen (mit Quellen)
+
+Die App optimiert über **sechs** Dimensionen. Fünf sind die Evaluatoren aus dem Map Lab
+(Simple Slice, Joebrew, Resource-/Influence-/Tech-Access); die sechste haben wir ergänzt:
+
+| Dimension | Was gemessen wird | Quelle |
+| --- | --- | --- |
+| **Leere Felder** | Anzahl Systeme **ohne Planeten** (Anomalie/Wormhole/leer) im eigenen Slice (≤ 2 Züge) pro Spieler | `daveah/ti4_planet_selection`: „each player has a similar total number of **non-planet tiles**" · `KeeganW/ti4` (`src/helpers/Slices.js`): `IMBALANCE_WEIGHTS = { resources: 1, influence: 1, planets: 0.25, **anomalies: 1** }` mit `if (system.type === "red") value.anomalies += 1` |
+
+Zusätzlich gelten zwei **Wormhole-Regeln** (immer aktiv):
+
+| Regel | Quelle |
+| --- | --- |
+| **Höchstens 1 Wormhole pro Spieler-Slice** | `daveah/ti4_planet_selection`: „and **each player has at most one wormhole**" |
+| **Kein Wormhole direkt am Heimsystem** | Community-Praxis; u. a. `acodcha/ti4-cartographer` behandelt Wormholes in der Kategorie `SystemCategory::AnomalyWormholeEmpty` und bilanziert sie pro Spieler (`source/Anomaly.hpp`, `source/SystemCategory.hpp`). Hinweis: acodchas Anomalie-Scores sind Erfahrungswerte, keine Regel. |
+
+Umsetzung (technisch): „Leere Felder" ist als **sechste, lineare Dimension** in die Zielfunktion eingebaut
+(gleiche Gewichtung wie die übrigen Dimensionen, Totzone 1 Feld); angezeigt als Pille `Gap Leer`, der Spread
+steht zusätzlich im Test (`leer=[…]`).
+
+Die beiden Wormhole-Regeln:
+
+- **Kein Wormhole am Heimsystem** ist ein **hartes** Constraint in `sysConflicts` und wird damit beim Start
+  und bei jedem Tausch (`swapLegal`, `bankClimb`) geprüft.
+- **Höchstens 1 Wormhole pro Slice** ist **best effort**: `randomFill` setzt die Wormholes bewusst (Greedy mit
+  Limit-Check) und markiert die Startbelegung als „streng"; ist sie sauber, halten alle Züge die Regel ein.
+  Geometrisch ist sie nicht überall erfüllbar (enge Layouts: z. B. *3-Player Settlers* hat 15 Felder, davon 9
+  home-adjazent, bei 4 Wormholes) — dann wird sie nicht erzwungen und die Pille zeigt das Ergebnis ehrlich.
+  Messung: `node test.js` → „Wormhole ≤1/Slice erfüllt: 6/11 Layouts".
+
+Die Anzeige unter der Karte prüft alle drei Regeln über die Pillen `Leer` (Dimension), `Wormhole ≤1/Slice` und
+`Wormhole am Home`.
+
+> Diese Quellen sind Community-/Implementierungs-Konventionen, **keine** offiziellen FFG/Asmodee-Regeln.
+> BoardGameGeek, Reddit und die Suchmaschinen sind aus dieser Umgebung bot-geblockt; geprüfte Quellen sind
+> die oben verlinkten GitHub-Repos.
 
 ## Designs
 

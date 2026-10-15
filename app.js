@@ -220,6 +220,9 @@
     st.homeW = computeHomeW(st);
     st.homeRing = ringOrder(st);
     st.reach = {}; for(const h of homes) st.reach[h] = reachPositions(st, h, 2);
+    // Rueckwaerts-Zuordnung: Position -> Heimatsysteme, in deren Slice sie liegt.
+    st.reachHomes = {};
+    for(const h of homes) for(const p of st.reach[h]) (st.reachHomes[p]=st.reachHomes[p]||[]).push(h);
 
     // Fraktionsbedarf: je Spieler das Merkmal + die Felder, in denen es "erreichbar" zaehlt.
     // Gestufte Listen: positionsBoth (eigenes + beide Nachbarn) > positionsNear (eigenes +
@@ -253,10 +256,33 @@
   }
 
   function sysConflicts(st, place, pos, sys){
-    for(const n of (st.adj[pos]||[])){ const o=place[n]; if(!o) continue;
-      if(sys.anomalies!==null && o.anomalies!==null) return true;
-      if(sys.wormhole!==null && o.wormhole!==null && sys.wormhole===o.wormhole) return true; }
+    for(const n of (st.adj[pos]||[])){ const o=place[n];
+      if(o){
+        if(sys.anomalies!==null && o.anomalies!==null) return true;
+        if(sys.wormhole!==null && o.wormhole!==null && sys.wormhole===o.wormhole) return true;
+      }
+      // Kein Wormhole direkt am Heimsystem (Community-Regel, s. README).
+      if(sys.wormhole!==null){ const c=st.byKey[n]; if(c && c.type===TYPE.HOME) return true; }
+    }
     return false;
+  }
+
+  // Anzahl Wormholes, die im Slice (<=2 Zuege) eines Heimatsystems liegen.
+  function wormholesInSlice(st, place, home){
+    let n=0; for(const p of (st.reach[home]||[])){ const s=place[p]; if(s && s.wormhole!==null) n++; }
+    return n;
+  }
+  // Hoechstens 1 Wormhole pro Spieler-Slice: prueft nur die Heimatsysteme, deren Slice
+  // die uebergebenen Positionen beruehrt (schnell genug fuer den Optimierer).
+  function whLimitOk(st, place, positions){
+    const homes={};
+    for(const pos of positions) for(const h of (st.reachHomes[pos]||[])) homes[h]=1;
+    for(const h in homes) if(wormholesInSlice(st, place, h)>1) return false;
+    return true;
+  }
+  function whLimitOkAll(st, place){
+    for(const h of st.homes) if(wormholesInSlice(st, place, h)>1) return false;
+    return true;
   }
 
   // Aus st.reqs abgeleiteter Tile-Bedarf: je Merkmal die Anzahl benötigter Tiles.
@@ -277,7 +303,8 @@
     for(const d of demand){
       let have = sel.filter(s=>hasFeature(s,d.feature)).length;
       while(have < d.count){
-        const cands = sel.filter(s=>!hasFeature(s,d.feature));
+        // Nur Nicht-Wormhole-Tiles ersetzen, damit die Wormhole-Paare unangetastet bleiben.
+        const cands = sel.filter(s=>!hasFeature(s,d.feature) && s.wormhole===null);
         if(!cands.length) break;
         const cand = cands[Math.floor(rng()*cands.length)];
         const color = isBlue(cand) ? blue : red;
@@ -330,8 +357,8 @@
     const build = ()=>shuffle(blue.slice(),rng).slice(0,nB).concat(shuffle(red.slice(),rng).slice(0,nR));
     const needWh = wantWh || (demand||[]).some(d=>d.feature.kind==="wormhole");
     let sel = build();
-    sel = ensureFeatures(sel, blue, red, demand||[], rng);   // Faktionsbedarf zuerst
-    sel = ensureWormholes(sel, pool, needWh, rng);           // Wormholes: je Typ 0 oder >=2
+    sel = ensureWormholes(sel, pool, needWh, rng);           // Wormholes zuerst: je Typ 0 oder >=2
+    sel = ensureFeatures(sel, blue, red, demand||[], rng);   // dann Faktionsbedarf (Wormholes bleiben unberuehrt)
     return sel;
   }
 
@@ -359,6 +386,29 @@
       for(const l of lists){ if(placeFeatureAt(st, place, pool, rng, l, r.feature, pinned)){ ok=true; break; } }
       if(!ok) return null;   // Bedarf nicht platzierbar -> neuer Versuch
     }
+    // 1b) Wormholes bewusst setzen: kein Wormhole am Heimsystem (in sysConflicts geprueft) und
+    //     moeglichst hoechstens 1 Wormhole pro Spieler-Slice. Das Slice-Limit ist "best effort":
+    //     geht es im Layout nicht auf (enge Layouts), wird es nicht erzwungen, sondern nur
+    //     gemeldet. Ist die Startbelegung sauber, halten die Optimierer sie ein (st.whStrict).
+    for(const t of shuffle(pool.filter(x=>x.wormhole!==null), rng)){
+      let done=false;
+      for(const pos of shuffle(st.opens.slice(),rng)){
+        if(place[pos]) continue;
+        if(sysConflicts(st,place,pos,t)) continue;
+        place[pos]=t;
+        if(!whLimitOk(st,place,[pos])){ place[pos]=undefined; continue; }
+        pool.splice(pool.indexOf(t),1); done=true; break;
+      }
+      if(!done){   // notfalls ohne das Slice-Limit
+        for(const pos of shuffle(st.opens.slice(),rng)){
+          if(place[pos]) continue;
+          if(sysConflicts(st,place,pos,t)) continue;
+          place[pos]=t; pool.splice(pool.indexOf(t),1); done=true; break;
+        }
+      }
+      if(!done) return null;
+    }
+    st.whStrict = whLimitOkAll(st, place);   // nur einhalten, wenn die Startbelegung es schafft
     // 2) Rest zufaellig fuellen.
     for(const pos of order){
       if(place[pos]) continue;
@@ -387,7 +437,8 @@
     if(st.pinned && (st.pinned.has(place[a].id) || st.pinned.has(place[b].id))) return false;  // Garantie-Tiles fixiert
     const A=place[a], B=place[b];
     place[a]=B; place[b]=A;
-    const ok = !sysConflicts(st,place,a,place[a]) && !sysConflicts(st,place,b,place[b]);
+    const ok = !sysConflicts(st,place,a,place[a]) && !sysConflicts(st,place,b,place[b])
+            && (!st.whStrict || whLimitOk(st,place,[a,b]));
     place[a]=A; place[b]=B;
     return ok;
   }
@@ -498,7 +549,7 @@
   // Gewichte + Systemwerte fuer ALLE Evaluatoren vorberechnen.
   function prepareEvals(st){
     const all = st.allPool || st.pool;
-    return default_evaluators.map(function(e){
+    const out = default_evaluators.map(function(e){
       const ev=makeEval(e.data);
       st.eval=ev; const w=computeHomeW(st);
       const val={};
@@ -506,6 +557,16 @@
       val[REX_ID]=ev.sysVal(SYS[REX_ID]);
       return { name:e.title, ev:ev, w:w, val:val };
     });
+    // Zusatz-Dimension: nicht-Planeten-Tiles im eigenen Slice (<=2 Zuege).
+    // Quelle: daveah/ti4_planet_selection ("each player has a similar total number of
+    // non-planet tiles"); KeeganW/ti4 gewichtet rote Tiles mit 1 (analog zu Ressourcen/
+    // Influence). Linear in der Zuordnung -> passt direkt in die Optimierung.
+    const valNP={};
+    for(const sy of all) valNP[sy.id] = (sy.planets.length<1) ? 1 : 0;
+    valNP[REX_ID]=0;                       // Mecatol gehoert niemandem
+    const wNP = st.homes.map(function(h){ const o={}; for(const p of (st.reach[h]||[])) o[p]=1; return o; });
+    out.push({ name:"Leere Felder", ev:null, w:wNP, val:valNP, nonPlanet:true });
+    return out;
   }
 
   // Bank-Tausch: platzierte Systeme gegen gleichfarbige, aktuell NICHT platzierte Tiles
@@ -534,7 +595,7 @@
           if(t.id===old.id || isBlue(t)!==oldBlue || t.wormhole!==oldWh) continue;
           if(bank.indexOf(t)<0) continue;              // schon verbraucht
           place[pos]=t;
-          const bad=sysConflicts(st,place,pos,t);
+          const bad=sysConflicts(st,place,pos,t) || (st.whStrict && !whLimitOk(st,place,[pos]));
           place[pos]=old;
           if(bad) continue;
           const ng=new Array(nE);
@@ -723,7 +784,13 @@
     const wkeys=Object.keys(wc);
     const wh = wkeys.length ? wkeys.map(k2=>whNames[k2]+wc[k2]).join(" ") : "–";
     const whOk = wkeys.every(k2=>wc[k2]>=2);
-    return { blue, red, res, inf, tech, traits:`${haz}/${ind}/${cul}`, wh:wh, whOk:whOk };
+    // Zusatzregeln: hoechstens 1 Wormhole pro Spieler-Slice, keines am Heimsystem.
+    let whSliceOk=true;
+    for(const h of st.homes) if(wormholesInSlice(st, place, h)>1) whSliceOk=false;
+    let whHomeOk=true;
+    for(const pos in place){ const s=place[pos]; if(!s || s.wormhole===null) continue;
+      for(const n of (st.adj[pos]||[])){ const c=st.byKey[n]; if(c && c.type===TYPE.HOME) whHomeOk=false; } }
+    return { blue, red, res, inf, tech, traits:`${haz}/${ind}/${cul}`, wh:wh, whOk:whOk, whSliceOk:whSliceOk, whHomeOk:whHomeOk };
   }
 
   // ---- UI ----
@@ -801,7 +868,7 @@
 
   function shortName(t){
     return t==="Simple Slice"?"Slice":t==="Joebrew"?"Joebrew":t==="Resource Access"?"Res":
-           t==="Influence Access"?"Inf":t==="Tech Access"?"Tech":t;
+           t==="Influence Access"?"Inf":t==="Tech Access"?"Tech":t==="Leere Felder"?"Leer":t;
   }
   function shortFaction(n){
     if(!n) return "";
@@ -837,7 +904,7 @@
       item(`<span class="lg-t">Planetentyp:</span>`,
         pair(sw(th.trait[0]),"Hazardous")+pair(sw(th.trait[1]),"Industrial")+pair(sw(th.trait[2]),"Cultural")),
       item(`<span class="lg-t">Anomalien:</span>`, acrList.map(a=>pair(gly(a), ANOM_DE[a]||a)).join("")),
-      item(`<span class="lg-t">Wormhole (je Typ 0 oder ≥2):</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
+      item(`<span class="lg-t">Wormhole (je Typ 0 oder ≥2; max. 1 je Slice; keins am Home):</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
       item(pair(gly("★"),"legendärer Planet")+pair(gly("⌂"),"Raumstation")+pair(gly("◇"),"Warprand (leer)")),
       item(pair(`<span class="lg-num">110</span>`,"Tile-Nummer (System)")),
       item(`<span class="lg-t">Felder:</span>`,
@@ -862,7 +929,9 @@
       `<span class="pill">Res/Inf <b>${s.res}/${s.inf}</b></span>`+
       `<span class="pill">Tech <b>${s.tech||"-"}</b></span>`+
       `<span class="pill">Traits R/G/B <b>${s.traits}</b></span>`+
-      `<span class="pill ${s.whOk?"good":"bad"}">Wormholes <b>${s.wh}</b></span>`;
+      `<span class="pill ${s.whOk?"good":"bad"}">Wormholes <b>${s.wh}</b></span>`+
+      `<span class="pill ${s.whSliceOk?"good":"bad"}">Wormhole ≤1/Slice <b>${s.whSliceOk?"✓":"✗"}</b></span>`+
+      `<span class="pill ${s.whHomeOk?"good":"bad"}">Wormhole am Home <b>${s.whHomeOk?"keins":"ja"}</b></span>`;
     prep.forEach(function(E,i){ const g=gaps[i];
       pills += `<span class="pill ${rel[i]===0?"good":(rel[i]<=0.02?"warn":"bad")}">Gap ${shortName(E.name)} <b>${g}</b></span>`; });
     pills += `<span class="pill ${maxRel<=0.02?"good":"warn"}">Max Gap <b>${(maxRel*100).toFixed(1)}%</b></span>`;

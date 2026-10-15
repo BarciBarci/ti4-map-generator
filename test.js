@@ -14,6 +14,7 @@ const T=ctx.window.__ti4;
 const pool=T.buildPool(true,true,true);
 const BUDGET=+(process.argv[2]||3000);
 let fails=0, worst=0;
+let whSliceOk=0, whSliceTotal=0;
 
 // Wormhole-Regel: pro Typ 0 oder >=2.
 function whCountsOf(arr){ const c={}; for(const s of arr){ if(s.wormhole!==null && s.wormhole!==undefined) c[s.wormhole]=(c[s.wormhole]||0)+1; } return c; }
@@ -42,15 +43,30 @@ for(const [p,title] of titles){
   if(new Set(ids).size!==ids.length){ console.log("DUPLIKAT-TILE", title); fails++; }
   const whP=whCountsOf(Object.values(res.place)), badPl=whBad(whP);
   if(badPl.length){ console.log("WORMHOLE UNPAAR nach Optimierung", title, whStr(whP)); fails++; }
+
+  // Zusatzregeln: max. 1 Wormhole je Spieler-Slice, kein Wormhole am Heimsystem
+  const sliceBad=[];
+  for(const h of st.homes){ let n=0; for(const p of (st.reach[h]||[])){ const s=res.place[p]; if(s && s.wormhole!==null) n++; } if(n>1) sliceBad.push(n); }
+  let homeBad=0;
+  for(const pos in res.place){ const s=res.place[pos]; if(s.wormhole===null) continue;
+    for(const n of (st.adj[pos]||[])){ const c=st.byKey[n]; if(c && c.type===2) homeBad++; } }
+  whSliceTotal++;
+  if(sliceBad.length){ /* best effort: geometrisch nicht immer erfuellbar */ } else whSliceOk++;
+  if(homeBad){ console.log("WORMHOLE AM HEIMASYSTEM", title, homeBad); fails++; }
+
+  // Dimension "Leere Felder" (nicht-Planeten-Tiles im Slice)
+  const np=st.homes.map(h=>{ let n=0; for(const p of (st.reach[h]||[])){ const s=res.place[p]; if(s && s.planets.length<1) n++; } return n; });
+  const npSpread=Math.max.apply(null,np)-Math.min.apply(null,np);
   const sideE=Es.map(E=>E.name).filter((_,i)=>rl[i]>0.02);
   if(sideE.length) console.log("   einseitig:", sideE.join(", "));
   const maxRel=Math.max.apply(null,rl);
   worst=Math.max(worst, maxRel);
   const ok=maxRel<=0.08;
   if(!ok) fails++;
-  console.log(`${title.padEnd(22)} n=${String(st.opens.length).padStart(2)}  gaps=[${g.join(",")}]  rel=[${rl.map(x=>(x*100).toFixed(0)+"%").join(",")}]  maxRel=${(maxRel*100).toFixed(1)}%${ok?"":"  <-- >8%"}`);
+  console.log(`${title.padEnd(22)} n=${String(st.opens.length).padStart(2)}  gaps=[${g.join(",")}]  rel=[${rl.map(x=>(x*100).toFixed(0)+"%").join(",")}]  maxRel=${(maxRel*100).toFixed(1)}%  leer=[${np.join("/")}]${ok?"":"  <-- >8%"}`);
 }
 console.log(fails ? ("FAILS="+fails) : ("OK - worst rel gap = "+(worst*100).toFixed(1)+"%"));
+console.log("Wormhole ≤1/Slice erfüllt: "+whSliceOk+"/"+whSliceTotal+" Layouts (best effort; enge Layouts erlauben es nicht immer)");
 
 // ---- Faktions-Garantien ----
 // [Titel, Fraktionen, contest?, Nachbar-Stufe verlangen?]
