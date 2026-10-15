@@ -799,26 +799,33 @@
   TECH_DE[TECH_LETTER[TECH_SPECIALTIES.PROPULSION]]="Propulsion";
   TECH_DE[TECH_LETTER[TECH_SPECIALTIES.BIOTIC]]="Biotic"; TECH_DE[TECH_LETTER[TECH_SPECIALTIES.CYBERNETIC]]="Cybernetic";
   const ANOM_DE = { SN:"Supernova", NEB:"Nebel", AST:"Asteroidenfeld", GR:"Gravitationsriss", ES:"Entropic Scar" };
+  const ANOM_ORDER = ["SN","GR","NEB","AST","ES"];
 
   function legendHTML(){
     const th = THEMES[currentTheme()] || THEMES.classic;
     const sw=c=>`<span class="lg-sw" style="background:${c}"></span>`;
     const badge=t=>`<span class="lg-sw lg-badge" style="background:${th.techFill};border-color:${th.techStroke};color:${th.value}">${t}</span>`;
-    const gl=t=>`<span class="lg-sw lg-glyph" style="color:${th.glyph}">${t}</span>`;
-    const techKeys=["R","B","G","Y"];
-    const anoms=Object.keys(ANOM_LABEL).map(k2=>ANOM_LABEL[k2]);
+    const gly=t=>`<span class="lg-glyph" style="color:${th.glyph}">${t}</span>`;
+    const pair=(sym,txt)=>`<span class="lg-pair">${sym}<span class="lg-t">${txt}</span></span>`;
+    const item=(...parts)=>`<span class="lg-item">${parts.join("")}</span>`;
+
+    const techKeys=[TECH_LETTER[TECH_SPECIALTIES.WARFARE], TECH_LETTER[TECH_SPECIALTIES.PROPULSION],
+                    TECH_LETTER[TECH_SPECIALTIES.BIOTIC], TECH_LETTER[TECH_SPECIALTIES.CYBERNETIC]];
+    const tech=techKeys.map(x=>[x, TECH_DE[x]||x]);
+    const acrSet={}; Object.keys(ANOM_LABEL).forEach(k2=>{ acrSet[ANOM_LABEL[k2]]=1; });
+    const acrList=ANOM_ORDER.filter(a=>acrSet[a]).concat(Object.keys(acrSet).filter(a=>ANOM_ORDER.indexOf(a)<0));
+
     return [
-      `<span class="lg-item">${techKeys.map(badge).join("")}<span class="lg-t">Tech-Spezialisierung: `+
-        techKeys.map(x=>`<b>${x}</b>&nbsp;=&nbsp;${TECH_DE[x]}`).join(", ")+`</span></span>`,
-      `<span class="lg-item"><span class="lg-t">Zahl unter dem Planeten (z.&nbsp;B. <b>3/1</b>) = Ressourcen&nbsp;/&nbsp;Influence</span></span>`,
-      `<span class="lg-item">${sw(th.trait[0])}${sw(th.trait[1])}${sw(th.trait[2])}<span class="lg-t">Planetentyp (Punkt): rot&nbsp;=&nbsp;Hazardous, grün&nbsp;=&nbsp;Industrial, blau&nbsp;=&nbsp;Cultural</span></span>`,
-      `<span class="lg-item">${anoms.map(a=>gl(a)).join("")}<span class="lg-t">Anomalien: `+
-        anoms.map(a=>`<b>${a}</b>&nbsp;=&nbsp;${ANOM_DE[a]||a}`).join(", ")+`</span></span>`,
-      `<span class="lg-item">${gl("α")}${gl("β")}<span class="lg-t">Wormhole: Alpha&nbsp;/&nbsp;Beta</span></span>`,
-      `<span class="lg-item">${gl("★")}${gl("⌂")}<span class="lg-t">legendärer Planet&nbsp;/&nbsp;Raumstation</span></span>`,
-      `<span class="lg-item"><span class="lg-sw lg-num">110</span><span class="lg-t">kleine Zahl oben = System-Tile-Nummer</span></span>`,
-      `<span class="lg-item">${sw(th.home)}${sw(th.rex)}${sw(th.blue)}${sw(th.red)}<span class="lg-t">HOME (Heimatsystem)&nbsp;/&nbsp;Mecatol Rex&nbsp;/&nbsp;blau&nbsp;=&nbsp;besiedelbar&nbsp;/&nbsp;rot&nbsp;=&nbsp;leer oder Anomalie</span></span>`,
-      `<span class="lg-item">${gl("◇")}<span class="lg-t">Warprand (leeres Feld, nur Verbindung)</span></span>`,
+      item(`<span class="lg-t">Tech-Spezialisierung:</span>`, tech.map(t=>pair(badge(t[0]),t[1])).join("")),
+      item(`<span class="lg-t">Zahl am Planeten (<b>3/1</b>) = Ressourcen&nbsp;/&nbsp;Influence</span>`),
+      item(`<span class="lg-t">Planetentyp:</span>`,
+        pair(sw(th.trait[0]),"Hazardous")+pair(sw(th.trait[1]),"Industrial")+pair(sw(th.trait[2]),"Cultural")),
+      item(`<span class="lg-t">Anomalien:</span>`, acrList.map(a=>pair(gly(a), ANOM_DE[a]||a)).join("")),
+      item(`<span class="lg-t">Wormhole:</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
+      item(pair(gly("★"),"legendärer Planet")+pair(gly("⌂"),"Raumstation")+pair(gly("◇"),"Warprand (leer)")),
+      item(pair(`<span class="lg-num">110</span>`,"Tile-Nummer (System)")),
+      item(`<span class="lg-t">Felder:</span>`,
+        pair(sw(th.home),"HOME")+pair(sw(th.rex),"Mecatol Rex")+pair(sw(th.blue),"besiedelbar (blau)")+pair(sw(th.red),"leer/Anomalie (rot)")),
     ].join("");
   }
   function renderLegend(){ const el=$("legend"); if(el) el.innerHTML=legendHTML(); }

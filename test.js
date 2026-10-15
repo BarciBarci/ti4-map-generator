@@ -74,8 +74,15 @@ console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
 // ---- Legende ----
 {
   const lg=T.legendHTML();
-  const want=["Warfare","Propulsion","Biotic","Cybernetic","Supernova","Gravitationsriss","Nebel","Asteroidenfeld","Ressourcen","Wormhole","Tile-Nummer"];
+  const want=["Warfare","Propulsion","Biotic","Cybernetic","Supernova","Gravitationsriss","Nebel","Asteroidenfeld","Entropic Scar","Ressourcen","Wormhole","Tile-Nummer","Hazardous","Industrial","Cultural","HOME","Mecatol"];
   const miss=want.filter(w=>lg.indexOf(w)<0);
-  console.log("Legende:", lg.length+" Zeichen", miss.length?("FEHLT: "+miss.join(", ")):"alle Symbole erklärt");
-  if(miss.length){ fails++; console.log("FAILS="+fails); }
+  // Kein Zusammenkleben: jede Abkuerzung muss direkt von ihrem Namen gefolgt sein (z.B. "SN Supernova").
+  const glued=lg.indexOf("NEBGR")>=0 || lg.indexOf("SNES")>=0 || lg.indexOf("ASTSN")>=0;
+  const pairOk=["SN & Supernova","GR & Gravitationsriss","NEB & Nebel","AST & Asteroidenfeld","ES & Entropic Scar",
+                "R & Warfare","B & Propulsion","G & Biotic","Y & Cybernetic"].filter(function(pr){
+    const p=pr.split(" & "), acr=p[0], nm=p[1];
+    return lg.indexOf(">"+acr+"</span><span class=\"lg-t\">"+nm)<0;
+  });
+  console.log("Legende:", lg.length+" Zeichen", (miss.length||glued||pairOk.length)?("FEHLER "+miss.join(",")+ (glued?" [verklebt]":"")+ (pairOk.length?(" [nicht gepaart: "+pairOk.join(",")+"]"):"")):"alle Symbole erklärt und gepaart");
+  if(miss.length||glued||pairOk.length){ fails++; console.log("FAILS="+fails); }
 }
