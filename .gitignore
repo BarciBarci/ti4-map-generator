@@ -1,0 +1,9 @@
+# Node
+node_modules/
+npm-debug.log*
+__pycache__/
+*.pyc
+
+# Build-Artefakte / lokal
+preview.svg
+*.png

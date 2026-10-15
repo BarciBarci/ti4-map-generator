@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TI4 Balanced Map Generator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>TI4 Balanced Map Generator</h1>
+  <p class="sub">Ausgeglichene Karten für 3–6 Spieler · Layouts &amp; Tile-Daten aus dem TI4 Map Lab</p>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="field">
+      <label for="players">Spieler</label>
+      <select id="players">
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6" selected>6</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="layout">Layout</label>
+      <select id="layout"></select>
+    </div>
+
+    <div class="field">
+      <label>Erweiterungen (Tile-Vorrat)</label>
+      <label class="check"><input type="checkbox" id="base" checked> Grundspiel</label>
+      <label class="check"><input type="checkbox" id="pok" checked> Prophecy of Kings</label>
+      <label class="check"><input type="checkbox" id="te" checked> Thunder's Edge</label>
+    </div>
+
+    <div class="field">
+      <label for="ratio">Blau-Anteil: <span id="ratioVal">60</span>%</label>
+      <input type="range" id="ratio" min="40" max="75" step="1" value="60">
+    </div>
+
+    <div class="field">
+      <label class="check"><input type="checkbox" id="wh" checked> Wormholes als Paare</label>
+    </div>
+
+    <div class="field">
+      <label for="evaluator">Evaluator (Bewertung)</label>
+      <select id="evaluator"></select>
+    </div>
+
+    <div class="field">
+      <button id="generate" class="primary">Karte generieren</button>
+      <button id="improve">Balance verbessern</button>
+      <button id="png">Als PNG speichern</button>
+      <p id="status" class="status"></p>
+    </div>
+  </section>
+
+  <section class="output">
+    <div id="stats" class="stats"></div>
+    <div id="map" class="mapbox"></div>
+    <div class="stringrow">
+      <input id="mapstring" readonly placeholder="Map-String erscheint hier">
+      <button id="copy">Kopieren</button>
+      <a id="download" class="btn" download="ti4-map.svg">SVG</a>
+    </div>
+    <p class="hint">Map-String: Feld „Map String“ im TI4 Map Lab → „Load From String“. Identisches Format
+      (36/60 Zahlen, <code>0</code> = leer, Mecatol nicht enthalten).</p>
+    <footer class="fan">
+      <strong>Nicht-kommerzielles Fan-Projekt.</strong>
+      Layouts, Tile- und Evaluator-Daten stammen aus dem
+      <a href="https://github.com/joepinion/ti4-map-lab" target="_blank" rel="noopener">TI4 Map Lab</a>
+      von Joseph Arthur Ellis (Lizenz <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>).
+      „Twilight Imperium“ ist ein Markenzeichen von Fantasy Flight Games / Asmodee.
+      Kein offizielles Produkt, keine Verbindung zu FFG/Asmodee.
+    </footer>
+  </section>
+</main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
