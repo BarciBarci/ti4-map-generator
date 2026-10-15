@@ -27,7 +27,8 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 - Legalität wird erzwungen: keine zwei Anomalien benachbart, keine zwei gleichen Wormholes benachbart.
 - **Faktionen berücksichtigen (optional):** sichert je gewählter Fraktion das vorteilhafte Kartenmerkmal
   (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
-  **in Reichweite** des jeweiligen Heimatsystems – siehe Abschnitt unten.
+  **in Reichweite** des jeweiligen Heimatsystems; optional **möglichst auch für die Nachbarn erreichbar**
+  (kontestiert). Eine Fraktion ist nur einmal wählbar – siehe Abschnitt unten.
 - Ausgabe: gerenderte Karte (**PNG**- oder SVG-Download), **Map-String** (kompatibel mit TI4 Map Lab / TTS / keeganw),
   Statistik (Blue/Red, Resources/Influence, Tech, Traits R/G/B, Wormholes) und die Home-Werte.
 
@@ -43,7 +44,7 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 | `Gap <Evaluator>` | **Gap** = größter minus kleinster Home-Wert unter allen Spielern (in Einheiten des Evaluators). |
 | `Max Gap` | größter **relativer** Gap über alle Evaluatoren in % (siehe unten). |
 | `Einseitig` | Evaluatoren, deren relativer Gap über der Zielschwelle (2 %) liegt – „hier ist es noch schief“. |
-| `<Fraktion>: <Merkmal>` | Ob das fraktionsspezifische Merkmal in Reichweite des Heimatsystems liegt (`in Reichweite` / `fehlt`). |
+| `<Fraktion>: <Merkmal>` | Erreichte Reichweite des fraktionsspezifischen Merkmals: `+Nachbar` / `+2 Nachbarn` / `nur eigenes` / `fehlt`. |
 
 ## Lokal starten
 
@@ -98,9 +99,25 @@ git push -u origin main
 
 ## Faktionen berücksichtigen
 
-Option **„Faktionen berücksichtigen“**: pro Spieler eine Fraktion wählen. Der Generator sichert dann das
-**fraktionsspezifische, vorteilhafte Kartenmerkmal** und legt es **in Reichweite (≤ 2 Felder)** des jeweiligen
-Heimatsystems ab – fehlt es, wird die Fraktion benachteiligt.
+Option **„Faktionen berücksichtigen“**: pro Spieler eine Fraktion wählen (eine Fraktion ist nur **einmal**
+wählbar – bereits vergebene Optionen werden in den übrigen Dropdowns deaktiviert). Der Generator sichert
+dann das **fraktionsspezifische, vorteilhafte Kartenmerkmal** und legt es **in Reichweite (≤ 2 Felder)** des
+jeweiligen Heimatsystems ab – fehlt es, wird die Fraktion benachteiligt.
+
+Option **„Merkmal möglichst auch für Nachbarn erreichbar“** (kontestiert): das Merkmal wird so platziert, dass
+es möglichst auch die **Nachbarn** erreichen können – gestuft:
+
+| Stufe | Bedeutung |
+| --- | --- |
+| `both` | in Reichweite von eigenem Home **und beiden** Nachbarn |
+| `near` | in Reichweite von eigenem Home **und mind. einem** Nachbarn |
+| `own` | nur eigenes Home (Fallback) |
+
+Gewählt wird die **beste erfüllbare** Stufe; sie wird in der Pille angezeigt. **Wichtiger Befund**
+(`tools/probe_reach.js`): Stufe `both` ist in **keinem** der eingebauten Layouts erfüllbar (Schnittmenge der
+drei Slices = 0), Stufe `near` dagegen in allen außer *3-Player Standard* und *3-Player Warp*. Der Schalter
+bewirkt also real, dass das Merkmal in die **umkämpfte Randzone** zwischen dem eigenen und einem Nachbar-Slice
+gelegt wird statt tief ins eigene Gebiet.
 
 | Fraktion | benötigtes Merkmal |
 | --- | --- |
@@ -116,14 +133,16 @@ Heimatsystems ab – fehlt es, wird die Fraktion benachteiligt.
    Es wird ein **farbgleiches** Tile ersetzt, damit das Blue/Red-Verhältnis erhalten bleibt.
 2. **Konstruktion:** `randomFill` platziert die Merkmals-Tiles **zuerst** auf einem Feld **≤ 2 Zügen** vom
    Heimatsystem (`reachPositions`; andere Heimatsysteme und Mecatol werden nicht durchquert – entspricht
-   KeeganWs `SLICE_DISTANCE = 2`). Gelingt das nicht, wird der Versuch verworfen und neu gewürfelt.
+   KeeganWs `SLICE_DISTANCE = 2`). Mit aktivem Kontest-Schalter wird dabei die beste erfüllbare Stufe
+   `both` → `near` → `own` gewählt. Gelingt die Platzierung nicht, wird der Versuch verworfen und neu gewürfelt.
 3. **Fixierung:** die so platzierten Tiles werden **gepinnt**. `swapLegal` (Tausch-Suche) und `bankClimb`
    (Bank-Tausch) lassen sie unangetastet – die Balance-Optimierung kann sie also nicht mehr aus der
    Reichweite schieben, während alle übrigen Tiles normal optimiert werden.
 4. **Wormholes:** wird Creuss gewählt, wird die α/β-Paar-Garantie auch dann erzwungen, wenn die Option
    „Wormholes als Paare“ ausgeschaltet ist.
-5. **Anzeige/Prüfung:** `featureReport` prüft nach der Optimierung je Fraktion „in Reichweite“ (Pill
-   grün/rot, Fraktionskürzel am Heimatsystem). `test.js` verifiziert das für 4/5/6 Spieler.
+5. **Anzeige/Prüfung:** `featureReport` prüft nach der Optimierung je Fraktion die erreichte Stufe
+   (`both`/`near`/`own`) bzw. „fehlt“ (Pill grün/rot, Fraktionskürzel am Heimatsystem). `test.js`
+   verifiziert das für 4/5/6 Spieler – auch im Kontest-Modus.
 
 **Bewusste Grenzen:** Es wird *ein* Garantie-Tile je Bedarf fixiert (keine ganzen Slices); die weiche
 Balance läuft weiter über die fünf Evaluatoren. Discordant-Stars-Fraktionen (z. B. Nivyn Star Kings,
@@ -167,6 +186,9 @@ node tools/probe_seeds.js "6-Player" 10 0.60
 
 # Analyse: k-opt-Test – findet LNS (exakte Permutation von k Positionen) noch eine Verbesserung?
 node tools/probe_lns.js 7
+
+# Analyse: welche Merkmals-Reichweite ist je Layout überhaupt möglich (own / +Nachbar / +2 Nachbarn)?
+node tools/probe_reach.js
 ```
 
 ## Screenshot / Beispielkarte neu erzeugen

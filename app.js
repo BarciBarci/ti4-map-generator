@@ -80,12 +80,14 @@
     return miss;
   }
 
-  // Prueft je Fraktionsbedarf, ob ein passendes Tile in Reichweite liegt.
+  // Prueft je Fraktionsbedarf, ob ein passendes Tile in Reichweite liegt – und auf welcher
+  // Stufe (both = auch beide Nachbarn, near = mind. ein Nachbar, own = nur eigenes Heimatsystem).
   function featureReport(st, place){
     return (st.reqs||[]).map(function(r){
       const idx=st.homes.indexOf(r.home);
-      const ok=r.positions.some(p=>place[p] && hasFeature(place[p], r.feature));
-      return { name:(st.factionNames&&st.factionNames[idx])||("Spieler "+(idx+1)), feature:r.featureKey, ok:ok };
+      const hit=list=>(list||[]).some(p=>place[p] && hasFeature(place[p], r.feature));
+      const reach = hit(r.positionsBoth) ? "both" : (hit(r.positionsNear) ? "near" : (hit(r.positions) ? "own" : null));
+      return { name:(st.factionNames&&st.factionNames[idx])||("Spieler "+(idx+1)), feature:r.featureKey, ok:!!reach, reach:reach };
     });
   }
 
@@ -184,8 +186,19 @@
     return Object.keys(dist).filter(p=>p!==homeKey && dist[p]<=maxD && opens[p]);
   }
 
+  // Heimatsysteme im Ring anordnen (Winkel um das Kartenzentrum) -> Nachbarschaft.
+  function ringOrder(st){
+    const hs=st.homes; if(!hs.length) return [];
+    let cx=0, cy=0;
+    for(const h of hs){ const c=st.byKey[h]; cx+=c.x+c.z/2; cy+=c.z; }
+    cx/=hs.length; cy/=hs.length;
+    return hs.map(h=>({ h:h, a:Math.atan2(st.byKey[h].z-cy, (st.byKey[h].x+st.byKey[h].z/2)-cx) }))
+             .sort((p,q)=>p.a-q.a).map(o=>o.h);
+  }
+
   // factions: Array (pro Heimatsystem/Spieler) mit Fraktionsnamen oder null.
-  function buildState(title, pool, ev, factions){
+  // contest: true = Merkmal moeglichst auch fuer die Nachbarn erreichbar platzieren.
+  function buildState(title, pool, ev, factions, contest){
     const layout = default_layouts.find(l => l.title === title);
     const cells = layout.data.map(sp => ({ x:sp.x, y:sp.y, z:sp.z, key:k(sp.x,sp.y,sp.z), type:sp.type }));
     const byKey = {}; cells.forEach(c => byKey[c.key]=c);
@@ -197,15 +210,25 @@
     const homes = cells.filter(c=>c.type===TYPE.HOME).map(c=>c.key);
     const opens = cells.filter(c=>c.type===TYPE.OPEN).map(c=>c.key);
     const rex = cells.find(c=>c.type===TYPE.REX);
-    const st = { cells, byKey, adj, homes, opens, rexKey: rex?rex.key:null, pool, eval:ev };
+    const st = { cells, byKey, adj, homes, opens, rexKey: rex?rex.key:null, pool, eval:ev, contest:!!contest };
     st.homeW = computeHomeW(st);
+    st.homeRing = ringOrder(st);
+    st.reach = {}; for(const h of homes) st.reach[h] = reachPositions(st, h, 2);
 
     // Fraktionsbedarf: je Spieler das Merkmal + die Felder, in denen es "erreichbar" zaehlt.
+    // Gestufte Listen: positionsBoth (eigenes + beide Nachbarn) > positionsNear (eigenes +
+    // mind. 1 Nachbar) > positions (nur eigenes).
     st.factionNames = factions ? factions.slice() : null;
     st.reqs = [];
     if(factions) factions.forEach(function(name, i){
       const f = factionNeed(name); if(!f || !homes[i]) return;
-      st.reqs.push({ home:homes[i], feature:f, featureKey:needLabel(f), positions:reachPositions(st, homes[i], 2) });
+      const h=homes[i], n=st.homeRing.length, ri=st.homeRing.indexOf(h);
+      const nb=[ st.homeRing[(ri-1+n)%n], st.homeRing[(ri+1)%n] ];
+      const own=st.reach[h], nbReach=nb.map(x=>st.reach[x]||[]);
+      const positionsBoth=own.filter(p=>nbReach.every(r=>r.indexOf(p)>=0));
+      const positionsNear=own.filter(p=>nbReach.some(r=>r.indexOf(p)>=0));
+      st.reqs.push({ home:h, feature:f, featureKey:needLabel(f),
+                     positions:own, positionsNear:positionsNear, positionsBoth:positionsBoth });
     });
     return st;
   }
@@ -328,19 +351,27 @@
     return sel;
   }
 
+  // Platziert ein Merkmals-Tile aus der Liste an einem freien, legalen Feld.
+  function placeFeatureAt(st, place, pool, rng, list, feature, pinned){
+    if(!list || !list.length) return false;
+    for(const pos of shuffle(list.slice(),rng)){
+      if(place[pos]) continue;
+      for(const t of shuffle(pool.filter(x=>hasFeature(x,feature)),rng)){
+        if(!sysConflicts(st,place,pos,t)){ place[pos]=t; pool.splice(pool.indexOf(t),1); pinned.add(t.id); return true; }
+      }
+    }
+    return false;
+  }
+
   function randomFill(st, rng){
     const place={}, pool=st.pool.slice(), order=shuffle(st.opens.slice(),rng), pinned=new Set();
-    // 1) Fraktionsbedarf zuerst: ein Merkmals-Tile in Reichweite (<=2 Felder) des Heimatsystems.
+    // 1) Fraktionsbedarf zuerst. Bei "contest" wird die beste erfuellbare Stufe gewaehlt:
+    //    eigenes + beide Nachbarn > eigenes + >=1 Nachbar > nur eigenes.
     for(const r of (st.reqs||[])){
-      let done=false;
-      for(const pos of shuffle(r.positions.slice(),rng)){
-        if(place[pos]) continue;
-        for(const t of shuffle(pool.filter(x=>hasFeature(x,r.feature)),rng)){
-          if(!sysConflicts(st,place,pos,t)){ place[pos]=t; pool.splice(pool.indexOf(t),1); pinned.add(t.id); done=true; break; }
-        }
-        if(done) break;
-      }
-      if(!done) return null;   // Bedarf nicht platzierbar -> neuer Versuch
+      const lists = st.contest ? [r.positionsBoth, r.positionsNear, r.positions] : [r.positions];
+      let ok=false;
+      for(const l of lists){ if(placeFeatureAt(st, place, pool, rng, l, r.feature, pinned)){ ok=true; break; } }
+      if(!ok) return null;   // Bedarf nicht platzierbar -> neuer Versuch
     }
     // 2) Rest zufaellig fuellen.
     for(const pos of order){
@@ -705,8 +736,20 @@
       const none=document.createElement("option"); none.value=""; none.textContent="—"; sel.appendChild(none);
       for(const f of enabledFactions()){ const o=document.createElement("option"); o.value=f.name; o.textContent=f.name+(factionNeed(f.name)?" *":""); sel.appendChild(o); }
       sel.value = prev[i] && enabledFactions().some(f=>f.name===prev[i]) ? prev[i] : "";
+      sel.addEventListener("change", syncFactionSelects);   // Einmal-Auswahl erzwingen
       row.appendChild(sel); box.appendChild(row);
     }
+    syncFactionSelects();
+  }
+  // Eine Fraktion darf nur einmal vergeben werden: bereits gewaehlte Optionen werden deaktiviert.
+  function syncFactionSelects(){
+    const box=$("factions"); if(!box || !box.querySelectorAll) return;
+    const sels=box.querySelectorAll("select"), used={};
+    Array.prototype.forEach.call(sels, s=>{ if(s.value) used[s.value]=1; });
+    Array.prototype.forEach.call(sels, s=>{
+      const opts=s.options||[];
+      for(let i=0;i<opts.length;i++){ const o=opts[i]; o.disabled = !!(o.value && o.value!==s.value && used[o.value]); }
+    });
   }
   function readFactions(){
     if(!$("useFactions") || !$("useFactions").checked) return null;
@@ -746,13 +789,14 @@
     const side=oneSided(rel, prep, 0.02);
     pills += `<span class="pill ${side.length?"warn":"good"}">Einseitig <b>${side.length?side.join(", "):"keine"}</b></span>`;
     const frep=featureReport(st, place);
-    frep.forEach(r=>{ pills += `<span class="pill ${r.ok?"good":"bad"}">${shortFaction(r.name)}: ${r.feature} <b>${r.ok?"in Reichweite":"fehlt"}</b></span>`; });
+    const reachLabel=r=>r.reach==="both"?"+2 Nachbarn":r.reach==="near"?"+Nachbar":r.reach==="own"?"nur eigenes":"fehlt";
+    frep.forEach(r=>{ pills += `<span class="pill ${r.ok?"good":"bad"}">${shortFaction(r.name)}: ${r.feature} <b>${reachLabel(r)}</b></span>`; });
     $("stats").innerHTML = pills;
     const fbad=frep.filter(r=>!r.ok);
     setStatus((side.length
       ? `Volloptimiert über alle ${prep.length} Bewertungen – Rest: ${side.join(", ")}.`
       : `Volloptimiert: alle ${prep.length} Bewertungen ausgeglichen (max. Gap ${(maxRel*100).toFixed(1)}%).`)
-      + (frep.length ? (fbad.length ? ` Faktionsbedarf offen: ${fbad.map(r=>shortFaction(r.name)+" ("+r.feature+")").join(", ")}.` : ` Faktionsbedarf erfüllt: ${frep.map(r=>shortFaction(r.name)+"→"+r.feature).join(", ")}.`) : "")
+      + (frep.length ? (fbad.length ? ` Faktionsbedarf offen: ${fbad.map(r=>shortFaction(r.name)+" ("+r.feature+")").join(", ")}.` : ` Faktionsbedarf erfüllt: ${frep.map(r=>shortFaction(r.name)+"→"+r.feature+" ("+reachLabel(r)+")").join(", ")}.`) : "")
       + ` Home-Werte (${prep[selIdx].name}): ${vals.join(" / ")}`);
   }
 
@@ -760,13 +804,13 @@
   // Tile-Vorrat + komplette Optimierung ueber ALLE Bewertungen. Ein Gesamtbudget
   // wird auf die Runden verteilt; abgebrochen wird, sobald nichts mehr einseitig ist.
   // Liefert { st, prep, res, mx } oder null; bei zu kleinem Pool { error:"tiles", ... }.
-  function generateRounds(title, pool, ratio, wantWh, rng, totalMs, targetRel, maxRounds, factions){
+  function generateRounds(title, pool, ratio, wantWh, rng, totalMs, targetRel, maxRounds, factions, contest){
     const t0=performance.now(), rounds=Math.max(1, maxRounds||4);
     let best=null;
     for(let r=0; r<rounds; r++){
       const left=totalMs-(performance.now()-t0);
       if(left<600 && best) break;
-      const st=buildState(title, pool, evSlice(), factions);
+      const st=buildState(title, pool, evSlice(), factions, contest);
       st.pool=chooseTiles(pool, st.opens.length, ratio, wantWh, rng, featureDemand(st));
       if(st.pool.length<st.opens.length) return { error:"tiles", have:st.pool.length, need:st.opens.length };
       st.allPool=pool;
@@ -798,7 +842,8 @@
         const layout=default_layouts.find(l=>l.title===title);
         const nOpen=layout ? layout.data.filter(c=>c.type===TYPE.OPEN).length : 30;
         const total=Math.min(10000, 3500 + nOpen*70);
-        const r=generateRounds(title, pool, ratio, needWh, rng, total, 0.02, 4, factions);
+        const contest = $("contestFeature") ? $("contestFeature").checked : false;
+        const r=generateRounds(title, pool, ratio, needWh, rng, total, 0.02, 4, factions, contest);
         if(r && r.error){ setStatus(`Zu wenige Tiles (${r.have}/${r.need}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
         if(!r){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
         cur={ st:r.st, place:r.res.place, prep:r.prep, gaps:r.res.gaps };

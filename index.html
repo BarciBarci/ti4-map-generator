@@ -64,8 +64,12 @@
     <div class="field">
       <label class="check"><input type="checkbox" id="useFactions"> Faktionen berücksichtigen</label>
       <div id="factions" class="factions"></div>
+      <label class="check"><input type="checkbox" id="contestFeature"> Merkmal möglichst auch für Nachbarn erreichbar</label>
       <p class="note">Sichert je Fraktion das vorteilhafte Merkmal <b>in Reichweite</b> (≤2 Felder):
-        Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole.</p>
+        Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole.<br>
+        Die Option „für Nachbarn erreichbar“ legt es so kontestiert wie möglich: eigenes + beide Nachbarn,
+        sonst eigenes + ein Nachbar, sonst nur eigenes (Stufe steht in der Pille). Eine Fraktion ist nur
+        einmal wählbar. Discordant-Stars-Fraktionen sind nicht enthalten.</p>
     </div>
 
     <div class="field">
@@ -95,7 +99,9 @@
         <b>Gap</b> je Bewertung und als <b>Einseitig</b> angezeigt.</p>
       <p>Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte
         Merkmal ins eigene Gebiet gelegt (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel,
-        Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert.</p>
+        Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert.
+        Mit <b>„für Nachbarn erreichbar“</b> wird es möglichst auf ein Feld gelegt, das auch die
+        Nachbarn erreichen (kontestiert).</p>
     </details>
   </section>
 

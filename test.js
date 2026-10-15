@@ -47,21 +47,26 @@ for(const [p,title] of titles){
 console.log(fails ? ("FAILS="+fails) : ("OK - worst rel gap = "+(worst*100).toFixed(1)+"%"));
 
 // ---- Faktions-Garantien ----
+// [Titel, Fraktionen, contest?, Nachbar-Stufe verlangen?]
 const fcases=[
-  ["4-Player Standard", ["The Embers of Muaat","The Clan of Saar","The Ghosts of Creuss",null]],
-  ["6-Player", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss","The Arborec"]],
-  ["5-Player Warp", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss"]],
+  ["4-Player Standard", ["The Embers of Muaat","The Clan of Saar","The Ghosts of Creuss",null], false, false],
+  ["6-Player", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss","The Arborec"], false, false],
+  ["5-Player Warp", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss"], false, false],
+  ["6-Player", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss","The Arborec"], true, true],
+  ["5-Player Standard", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Vuil'raith Cabal","The Ghosts of Creuss"], true, true],
+  ["4-Player Skinny", ["The Embers of Muaat","The Clan of Saar","The Empyrean","The Ghosts of Creuss"], true, true],
 ];
-for(const [title,factions] of fcases){
+for(const [title,factions,contest,needNb] of fcases){
   const rng=T.mulberry32(2024);
   const nOpen=T.buildState(title,pool,T.evSlice()).opens.length;
-  const r=T.generateRounds(title, pool, 0.60, true, rng, Math.min(10000,3500+nOpen*70), 0.02, 4, factions);
+  const r=T.generateRounds(title, pool, 0.60, true, rng, Math.min(10000,3500+nOpen*70), 0.02, 4, factions, contest);
   if(!r || r.error){ console.log("FAKTION KEINE KARTE", title, r&&r.error); fails++; continue; }
   const rep=T.featureReport(r.st, r.res.place);
   const bad=rep.filter(x=>!x.ok);
+  const lonely=needNb ? rep.filter(x=>x.reach==="own") : [];
   const ids=Object.values(r.res.place).map(s=>s.id);
-  const wa=ids.length, dup=(new Set(ids).size!==ids.length);
-  console.log(title.padEnd(20), "Fraktionen:", rep.map(x=>(x.ok?"OK ":"FEHLT ")+x.name+"→"+x.feature).join(", "));
-  if(bad.length||dup){ console.log("   FEHLER", bad.length?"Bedarf unerfüllt":"", dup?"Dublette":""); fails++; }
+  const dup=(new Set(ids).size!==ids.length);
+  console.log((title+(contest?" [contest]":"")).padEnd(26), rep.map(x=>(x.ok?"OK ":"FEHLT ")+x.name+"→"+x.feature+"("+x.reach+")").join(", "));
+  if(bad.length||dup||lonely.length){ console.log("   FEHLER", bad.length?"Bedarf unerfüllt":"", lonely.length?("nicht kontestiert: "+lonely.map(x=>x.name).join(",")):"", dup?"Dublette":""); fails++; }
 }
 console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
