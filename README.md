@@ -21,9 +21,10 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
   keine Bewertung mehr über der Zielschwelle liegt.
 - **Evaluator-Umschalter** (Anzeige/Details) und Button **„Balance verbessern“** zum Nachoptimieren einer Karte.
 - Ziel-**Blau-Anteil** einstellbar (Standard 60 % ≈ Community-Verhältnis 3:2).
-- **Wormholes immer paarweise:** Es sind gleich viele α wie β vorhanden, sofern die Option aktiv ist (mindestens ein
-  vollständiges Paar). Da der Optimierer nur gleichfarbige Tiles mit gleichem Wormhole-Typ tauscht, bleibt das Paar
-  garantiert erhalten.
+- **Wormholes je Typ 0 oder mindestens 2:** Ein einzelnes Wormhole ist funktionslos (es hat keinen Partner), deshalb
+  sind pro Typ entweder 0 oder ≥ 2 Tiles auf der Karte (mehr ist erlaubt). Ist die Option aktiv (oder Creuss dabei),
+  wird von **jedem** im Tile-Vorrat vorhandenen Typ mindestens ein Paar erzwungen. Da der Optimierer nur gleichfarbige
+  Tiles mit gleichem Wormhole-Typ tauscht, bleibt die Paarung garantiert erhalten.
 - Legalität wird erzwungen: keine zwei Anomalien benachbart, keine zwei gleichen Wormholes benachbart.
 - **Faktionen berücksichtigen (optional):** sichert je gewählter Fraktion das vorteilhafte Kartenmerkmal
   (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
@@ -42,7 +43,7 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
 | `Res/Inf` | Summe **Ressourcen** und **Influence** aller Planeten auf der Karte. |
 | `Tech` | Vorkommende Tech-Spezialisierungen als Buchstaben: **R**=Warfare, **B**=Propulsion, **G**=Biotic, **Y**=Cybernetic. |
 | `Traits R/G/B` | Anzahl roter / grüner / blauer Planeten (Hazardous / Industrial / Cultural). |
-| `Wormholes α/β` | Anzahl Alpha- und Beta-Wormholes. |
+| `Wormholes` | Anzahl je Typ (α/β/δ). Gültig ist **0 oder ≥ 2** pro Typ (ein Einzelnes wäre nutzlos; mehr als 2 sind erlaubt). |
 | `Gap <Evaluator>` | **Gap** = größter minus kleinster Home-Wert unter allen Spielern (in Einheiten des Evaluators). |
 | `Max Gap` | größter **relativer** Gap über alle Evaluatoren in % (siehe unten). |
 | `Einseitig` | Evaluatoren, deren relativer Gap über der Zielschwelle (2 %) liegt – „hier ist es noch schief“. |
@@ -88,7 +89,7 @@ git push -u origin main
 - **Zielfunktion**: minimiert wird `Summe(relative Gaps) + 8 × größter relativer Gap` – der schlechteste Evaluator
   zählt also am stärksten (Mini-Max).
 - **Ablauf** beim Klick auf „Karte generieren“ (alles automatisch, kein Zutun nötig):
-  1. Tile-Vorrat wählen (Blau/Rot-Ziel, Wormholes paarweise).
+  1. Tile-Vorrat wählen (Blau/Rot-Ziel, Wormholes je Typ ≥ 2).
   2. Pro Runde: neue Zufallskarte → Warmup auf Simple Slice/Joebrew → Optimierung über **alle fünf** Evaluatoren
      → Bank-Tausche; zwischendurch „Kicks“ (Iterated Local Search). Bei Stillstand wird die Zufallskarte intern neu
      gewürfelt.
@@ -116,7 +117,9 @@ es möglichst auch die **Nachbarn** erreichen können – gestuft:
 | `own` | nur eigenes Home (Fallback) |
 
 Gewählt wird die **beste erfüllbare** Stufe; sie wird unter der Karte am Heimatsystem bzw. in der Datenzeile
-angezeigt. **Wichtiger Befund**
+angezeigt. Ist der Kontest-Schalter aktiv, wird **kein** stiller Rückfall auf „nur eigenes" gemacht: lässt sich
+für ein Merkmal keine gemeinsame Randzone finden, wird ein neuer Versuch gewürfelt; gibt es im Layout gar keine
+gemeinsame Randzone (z. B. *3-Player Standard/Warp*), meldet die App das ausdrücklich. **Wichtiger Befund**
 (`tools/probe_reach.js`): Stufe `both` ist in **keinem** der eingebauten Layouts erfüllbar (Schnittmenge der
 drei Slices = 0), Stufe `near` dagegen in allen außer *3-Player Standard* und *3-Player Warp*. Der Schalter
 bewirkt also real, dass das Merkmal in die **umkämpfte Randzone** zwischen dem eigenen und einem Nachbar-Slice
@@ -141,8 +144,8 @@ gelegt wird statt tief ins eigene Gebiet.
 3. **Fixierung:** die so platzierten Tiles werden **gepinnt**. `swapLegal` (Tausch-Suche) und `bankClimb`
    (Bank-Tausch) lassen sie unangetastet – die Balance-Optimierung kann sie also nicht mehr aus der
    Reichweite schieben, während alle übrigen Tiles normal optimiert werden.
-4. **Wormholes:** wird Creuss gewählt, wird die α/β-Paar-Garantie auch dann erzwungen, wenn die Option
-   „Wormholes als Paare“ ausgeschaltet ist.
+4. **Wormholes:** wird Creuss gewählt, wird die Paar-Garantie (je Typ ≥ 2) auch dann erzwungen, wenn die Option
+   „Wormholes paarweise“ ausgeschaltet ist.
 5. **Anzeige/Prüfung:** `featureReport` prüft nach der Optimierung je Fraktion die erreichte Stufe
    (`both`/`near`/`own`) bzw. „fehlt“ (Kennzeichnung grün/rot unter der Karte, Fraktionskürzel am
    Heimatsystem). `test.js` verifiziert das für 4/5/6 Spieler – auch im Kontest-Modus.
@@ -177,7 +180,7 @@ Unterhalb der Karte steht auf der Webseite eine Legende; dieselbe Erklärung fin
 | `3/1` unter dem Planeten | Ressourcen / Influence des Planeten |
 | Punktfarbe des Planeten | rot = Hazardous, grün = Industrial, blau = Cultural |
 | `SN` `GR` `NEB` `AST` `ES` | Anomalien: Supernova, Gravitationsriss, Nebel, Asteroidenfeld, Entropic Scar |
-| `α` / `β` | Alpha- / Beta-Wormhole |
+| `α` / `β` | Alpha- / Beta-Wormhole (je Typ 0 oder ≥ 2 auf der Karte) |
 | `★` / `⌂` | legendärer Planet / Raumstation |
 | kleine Zahl oben | System-Tile-Nummer |
 | `HOME` + Wert | Heimatsystem und sein Home-Wert |
@@ -213,7 +216,7 @@ python3 build_data.py
 ## Test & Benchmark
 
 ```bash
-# Vollständige Prüfung: Gaps, legale Platzierung, Wormhole-Paare, keine Tile-Dubletten + Faktions-Garantien
+# Vollständige Prüfung: Gaps, legale Platzierung, Wormhole-Paare (je Typ ≥2), keine Tile-Dubletten + Faktions-Garantien
 node test.js 4000        # optional: Zeitbudget in ms pro Karte
 
 # Benchmark der App-Pipeline (generateRounds) über alle Layouts

@@ -75,6 +75,12 @@
     const miss=[];
     for(const name of (factions||[])){
       const f=factionNeed(name); if(!f) continue;
+      if(f.kind==="wormhole"){
+        // Es braucht ein vollstaendiges Paar (>=2) eines Typs.
+        const ok=wormholeTypes(pool).some(T=>pool.filter(x=>x.wormhole===T).length>=2);
+        if(!ok && miss.indexOf("Wormhole (mind. 2 gleiche)")<0) miss.push("Wormhole (mind. 2 gleiche)");
+        continue;
+      }
       if(!pool.some(s=>hasFeature(s,f))){ const l=needLabel(f); if(miss.indexOf(l)<0) miss.push(l); }
     }
     return miss;
@@ -285,69 +291,47 @@
     return sel;
   }
 
+  // Wormhole-Regel: pro Typ entweder 0 oder mindestens 2. Ein einzelnes Wormhole ist
+  // funktionslos (es hat keinen Partner). Mit requireAll wird fuer jeden im Vorrat
+  // vorhandenen Typ ein vollstaendiges Paar (>=2) erzwungen. Ersetzt werden nur Tiles
+  // gleicher Farbe, damit das Blue/Red-Verhaeltnis erhalten bleibt.
+  function wormholeTypes(pool){
+    const types=[];
+    for(const t of pool){ if(t.wormhole!==null && t.wormhole!==undefined && types.indexOf(t.wormhole)<0) types.push(t.wormhole); }
+    return types;
+  }
+  function ensureWormholes(sel, pool, requireAll, rng){
+    const blue=pool.filter(isBlue), red=pool.filter(isRed);
+    for(const T of wormholeTypes(pool)){
+      const avail=pool.filter(x=>x.wormhole===T);
+      let cur=sel.filter(x=>x.wormhole===T).length;
+      const target = requireAll ? Math.min(2, avail.length) : (cur>=2 ? cur : 0);
+      while(cur < target){                                  // auf ein vollstaendiges Paar auffuellen
+        const add=avail.filter(x=>sel.indexOf(x)<0); if(!add.length) break;
+        const t=add[Math.floor(rng()*add.length)];
+        const same=(isBlue(t)?blue:red).filter(x=>x.wormhole===null && sel.indexOf(x)>=0);
+        if(!same.length) break;
+        sel.splice(sel.indexOf(same[Math.floor(rng()*same.length)]),1); sel.push(t); cur++;
+      }
+      if(cur===1){                                          // einzelnes Wormhole nicht stehen lassen
+        const only=sel.find(x=>x.wormhole===T);
+        const repl=(isBlue(only)?blue:red).filter(x=>x.wormhole===null && sel.indexOf(x)<0);
+        if(repl.length){ sel.splice(sel.indexOf(only),1); sel.push(repl[Math.floor(rng()*repl.length)]); }
+      }
+    }
+    return sel;
+  }
+
   function chooseTiles(pool, nOpen, ratio, wantWh, rng, demand){
     const blue = pool.filter(isBlue), red = pool.filter(isRed);
     let nB = Math.round(nOpen*ratio); nB = Math.max(0, Math.min(nB, blue.length));
     let nR = nOpen-nB;
     if(nR > red.length){ nR = red.length; nB = Math.min(nOpen-nR, blue.length); }
     const build = ()=>shuffle(blue.slice(),rng).slice(0,nB).concat(shuffle(red.slice(),rng).slice(0,nR));
-    if(!wantWh && !(demand||[]).some(d=>d.feature.kind==="wormhole")) return ensureFeatures(build(), blue, red, demand||[], rng);
-    const aOf = sel=>sel.filter(x=>x.wormhole===WORMHOLES.ALPHA).length;
-    const bOf = sel=>sel.filter(x=>x.wormhole===WORMHOLES.BETA).length;
-    for(let t=0;t<300;t++){
-      const sel=ensureFeatures(balanceWormholes(build(), blue, red, true, rng), blue, red, demand||[], rng);
-      const a=aOf(sel), b=bOf(sel);
-      if(a===b && a>=1) return sel;   // garantiert mindestens ein korrektes Paar
-    }
-    // Notfall (praktisch nie): Wormholes durch gleichfarbige Nicht-Wormholes ersetzen
-    const sel=ensureFeatures(build(), blue, red, demand||[], rng), used={}; sel.forEach(t=>used[t.id]=1);
-    const repl=(blueFlag)=>(blueFlag?blue:red).filter(x=>x.wormhole===null && !used[x.id]);
-    return sel.map(t=>{
-      if(t.wormhole===null) return t;
-      const r=repl(isBlue(t));
-      if(r.length){ const pick=r[0]; used[pick.id]=1; return pick; }
-      return t;
-    });
-  }
-
-  function balanceWormholes(sel, blue, red, wantPairs, rng){
-    const A=WORMHOLES.ALPHA, B=WORMHOLES.BETA;
-    const cnt = () => { let a=0,b=0; for(const t of sel){ if(t.wormhole===A)a++; else if(t.wormhole===B)b++; } return [a,b]; };
-    const free = (isblue) => (isblue?blue:red).filter(x => x.wormhole===null && sel.indexOf(x)<0);
-    let guard=0;
-    while(guard++ < 40){
-      const c=cnt(), a=c[0], b=c[1];
-      if(a===b && (!wantPairs || a>=1)) break;
-      if(a>b || (a===0 && b===0 && wantPairs)){
-        const major = (a===b) ? null : A;
-        if(major!==null){
-          const t = sel.find(x=>x.wormhole===major);
-          const r = free(isBlue(t));
-          if(!r.length) break;
-          sel.splice(sel.indexOf(t),1); sel.push(r[Math.floor(rng()*r.length)]);
-        } else {
-          let done=false;
-          for(const pr of [[26,25],[102,64],[39,40],[79,113]]){
-            const Al=SYS[pr[0]], Be=SYS[pr[1]];
-            if(!Al||!Be||sel.indexOf(Al)>=0||sel.indexOf(Be)>=0) continue;
-            const isblue=isBlue(Al);
-            if(isblue!==isBlue(Be)) continue;
-            const bp=isblue?blue:red;
-            if(bp.indexOf(Al)<0||bp.indexOf(Be)<0) continue;
-            const removable=sel.filter(x=>x.wormhole===null && isBlue(x)===isblue);
-            if(removable.length<2) continue;
-            sel.splice(sel.indexOf(removable[0]),1); sel.splice(sel.indexOf(removable[1]),1);
-            sel.push(Al,Be); done=true; break;
-          }
-          if(!done) break;
-        }
-      } else {
-        const t = sel.find(x=>x.wormhole===B);
-        const r = free(isBlue(t));
-        if(!r.length) break;
-        sel.splice(sel.indexOf(t),1); sel.push(r[Math.floor(rng()*r.length)]);
-      }
-    }
+    const needWh = wantWh || (demand||[]).some(d=>d.feature.kind==="wormhole");
+    let sel = build();
+    sel = ensureFeatures(sel, blue, red, demand||[], rng);   // Faktionsbedarf zuerst
+    sel = ensureWormholes(sel, pool, needWh, rng);           // Wormholes: je Typ 0 oder >=2
     return sel;
   }
 
@@ -368,7 +352,9 @@
     // 1) Fraktionsbedarf zuerst. Bei "contest" wird die beste erfuellbare Stufe gewaehlt:
     //    eigenes + beide Nachbarn > eigenes + >=1 Nachbar > nur eigenes.
     for(const r of (st.reqs||[])){
-      const lists = st.contest ? [r.positionsBoth, r.positionsNear, r.positions] : [r.positions];
+      // Kontest-Modus: streng only "eigenes + beide Nachbarn" bzw. "eigenes + >=1 Nachbar".
+      // Klappt beides nicht, wird der Versuch verworfen (kein stiller Fallback auf "nur eigenes").
+      const lists = st.contest ? [r.positionsBoth, r.positionsNear] : [r.positions];
       let ok=false;
       for(const l of lists){ if(placeFeatureAt(st, place, pool, rng, l, r.feature, pinned)){ ok=true; break; } }
       if(!ok) return null;   // Bedarf nicht platzierbar -> neuer Versuch
@@ -730,8 +716,14 @@
       if(p.traits) for(const tr of p.traits){ if(tr===PLANET_TRAITS.HAZARDOUS)haz++; else if(tr===PLANET_TRAITS.INDUSTRIAL)ind++; else if(tr===PLANET_TRAITS.CULTURAL)cul++; }
     }
     tech=tech.split("").sort().join("");
-    return { blue, red, res, inf, tech, traits:`${haz}/${ind}/${cul}`,
-      wh:`${systems.filter(s=>s.wormhole===WORMHOLES.ALPHA).length}/${systems.filter(s=>s.wormhole===WORMHOLES.BETA).length}` };
+    // Wormholes je Typ zaehlen; gueltig ist 0 oder >=2 pro Typ (ein Einzelnes ist nutzlos).
+    const whNames={}; whNames[WORMHOLES.ALPHA]="α"; whNames[WORMHOLES.BETA]="β"; whNames[WORMHOLES.DELTA]="δ";
+    const wc={};
+    for(const s of systems){ if(s.wormhole!==null && s.wormhole!==undefined) wc[s.wormhole]=(wc[s.wormhole]||0)+1; }
+    const wkeys=Object.keys(wc);
+    const wh = wkeys.length ? wkeys.map(k2=>whNames[k2]+wc[k2]).join(" ") : "–";
+    const whOk = wkeys.every(k2=>wc[k2]>=2);
+    return { blue, red, res, inf, tech, traits:`${haz}/${ind}/${cul}`, wh:wh, whOk:whOk };
   }
 
   // ---- UI ----
@@ -845,7 +837,7 @@
       item(`<span class="lg-t">Planetentyp:</span>`,
         pair(sw(th.trait[0]),"Hazardous")+pair(sw(th.trait[1]),"Industrial")+pair(sw(th.trait[2]),"Cultural")),
       item(`<span class="lg-t">Anomalien:</span>`, acrList.map(a=>pair(gly(a), ANOM_DE[a]||a)).join("")),
-      item(`<span class="lg-t">Wormhole:</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
+      item(`<span class="lg-t">Wormhole (je Typ 0 oder ≥2):</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
       item(pair(gly("★"),"legendärer Planet")+pair(gly("⌂"),"Raumstation")+pair(gly("◇"),"Warprand (leer)")),
       item(pair(`<span class="lg-num">110</span>`,"Tile-Nummer (System)")),
       item(`<span class="lg-t">Felder:</span>`,
@@ -870,7 +862,7 @@
       `<span class="pill">Res/Inf <b>${s.res}/${s.inf}</b></span>`+
       `<span class="pill">Tech <b>${s.tech||"-"}</b></span>`+
       `<span class="pill">Traits R/G/B <b>${s.traits}</b></span>`+
-      `<span class="pill ${s.wh.split("/")[0]===s.wh.split("/")[1]?"good":"bad"}">Wormholes α/β <b>${s.wh}</b></span>`;
+      `<span class="pill ${s.whOk?"good":"bad"}">Wormholes <b>${s.wh}</b></span>`;
     prep.forEach(function(E,i){ const g=gaps[i];
       pills += `<span class="pill ${rel[i]===0?"good":(rel[i]<=0.02?"warn":"bad")}">Gap ${shortName(E.name)} <b>${g}</b></span>`; });
     pills += `<span class="pill ${maxRel<=0.02?"good":"warn"}">Max Gap <b>${(maxRel*100).toFixed(1)}%</b></span>`;
@@ -899,6 +891,12 @@
       const left=totalMs-(performance.now()-t0);
       if(left<600 && best) break;
       const st=buildState(title, pool, evSlice(), factions, contest);
+      if(contest){
+        // Layouts ohne gemeinsame Randzone (z. B. 3-Player Standard/Warp) koennen den
+        // Kontest-Modus nicht erfuellen -> klar melden statt "keine Karte gefunden".
+        const bad=(st.reqs||[]).filter(r=>!r.positionsNear || !r.positionsNear.length);
+        if(bad.length) return { error:"contest", factions:bad.map(r=>st.factionNames[st.homes.indexOf(r.home)]) };
+      }
       st.pool=chooseTiles(pool, st.opens.length, ratio, wantWh, rng, featureDemand(st));
       if(st.pool.length<st.opens.length) return { error:"tiles", have:st.pool.length, need:st.opens.length };
       st.allPool=pool;
@@ -933,6 +931,7 @@
         const cbc=$("contestFeature");
         const contest = !!(cbc && cbc.checked && !cbc.disabled);
         const r=generateRounds(title, pool, ratio, needWh, rng, total, 0.02, 4, factions, contest);
+        if(r && r.error==="contest"){ setStatus("Dieses Layout hat für "+r.factions.join(", ")+" keine gemeinsame Randzone mit den Nachbarn. Bitte „für Nachbarn erreichbar“ ausschalten oder ein anderes Layout wählen."); $("generate").disabled=false; return; }
         if(r && r.error){ setStatus(`Zu wenige Tiles (${r.have}/${r.need}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
         if(!r){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
         cur={ st:r.st, place:r.res.place, prep:r.prep, gaps:r.res.gaps };
@@ -999,5 +998,5 @@
   renderLegend();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction, legendHTML, loadThemePref, saveThemePref }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction, legendHTML, loadThemePref, saveThemePref }; }
 })();

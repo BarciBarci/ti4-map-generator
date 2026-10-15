@@ -15,6 +15,11 @@ const pool=T.buildPool(true,true,true);
 const BUDGET=+(process.argv[2]||3000);
 let fails=0, worst=0;
 
+// Wormhole-Regel: pro Typ 0 oder >=2.
+function whCountsOf(arr){ const c={}; for(const s of arr){ if(s.wormhole!==null && s.wormhole!==undefined) c[s.wormhole]=(c[s.wormhole]||0)+1; } return c; }
+function whBad(counts){ return Object.keys(counts).filter(k=>counts[k]<2).map(k=>k+":"+counts[k]); }
+function whStr(counts){ return Object.keys(counts).map(k=>(+k===0?"α":+k===1?"β":"δ")+counts[k]).join(" ")||"–"; }
+
 const titles=[];
 for(const p of ["3","4","5","6"]) for(const t of T.LAYOUTS[p]) titles.push([p,t]);
 
@@ -24,9 +29,9 @@ for(const [p,title] of titles){
   st.pool=T.chooseTiles(pool,st.opens.length,0.60,true,rng);
   st.allPool=pool;
 
-  // Wormholes immer paarweise?
-  const a=st.pool.filter(s=>s.wormhole===0).length, b=st.pool.filter(s=>s.wormhole===1).length;
-  if(a!==b||a<1){ console.log("WORMHOLE FEHLER", title, a, b); fails++; }
+  // Wormholes: je Typ 0 oder >=2; Option aktiv -> mindestens ein Paar je Typ
+  const whC=whCountsOf(st.pool), badPool=whBad(whC);
+  if(badPool.length){ console.log("WORMHOLE FEHLER im Vorrat", title, whStr(whC)); fails++; }
 
   const Es=T.prepareEvals(st);
   const res=T.generateFull(st,Es,rng,BUDGET,0.02);
@@ -35,8 +40,8 @@ for(const [p,title] of titles){
   const g=res.gaps, rl=res.rel;
   const ids=Object.values(res.place).map(s=>s.id);
   if(new Set(ids).size!==ids.length){ console.log("DUPLIKAT-TILE", title); fails++; }
-  const wa=Object.values(res.place).filter(s=>s.wormhole===0).length, wb=Object.values(res.place).filter(s=>s.wormhole===1).length;
-  if(wa!==wb){ console.log("WORMHOLE UNPAAR nach Optimierung", title, wa, wb); fails++; }
+  const whP=whCountsOf(Object.values(res.place)), badPl=whBad(whP);
+  if(badPl.length){ console.log("WORMHOLE UNPAAR nach Optimierung", title, whStr(whP)); fails++; }
   const sideE=Es.map(E=>E.name).filter((_,i)=>rl[i]>0.02);
   if(sideE.length) console.log("   einseitig:", sideE.join(", "));
   const maxRel=Math.max.apply(null,rl);
@@ -71,6 +76,18 @@ for(const [title,factions,contest,needNb] of fcases){
   if(bad.length||dup||lonely.length){ console.log("   FEHLER", bad.length?"Bedarf unerfüllt":"", lonely.length?("nicht kontestiert: "+lonely.map(x=>x.name).join(",")):"", dup?"Dublette":""); fails++; }
 }
 console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
+
+// ---- Wormhole-Regel (Grundspiel: vollstaendige Paare) ----
+{
+  const base=T.buildPool(true,false,false);
+  const sel=T.chooseTiles(base, 30, 0.60, true, T.mulberry32(1), []);
+  const ids=sel.map(s=>s.id), c=whCountsOf(sel);
+  const needIds=[26,39,25,40];                                  // beide Alpha + beide Beta
+  const missing=needIds.filter(i=>ids.indexOf(i)<0);
+  const ok = missing.length===0 && whBad(c).length===0;
+  console.log("Wormhole-Paare (Grundspiel):", ok?("OK "+whStr(c)+" (26,39,25,40 enthalten)"):("FEHLER "+whStr(c)+" fehlt:"+missing.join(",")));
+  if(!ok){ fails++; console.log("FAILS="+fails); }
+}
 
 // ---- Legende ----
 {
