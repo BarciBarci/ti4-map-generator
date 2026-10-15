@@ -754,28 +754,43 @@
     const box=$("factions"); if(!box) return;
     const n=+$("players").value, prev=readFactions()||[];
     box.innerHTML="";
-    if(!$("useFactions").checked) return;
-    for(let i=0;i<n;i++){
-      const row=document.createElement("div"); row.className="frow";
-      const lab=document.createElement("span"); lab.textContent="Spieler "+(i+1); row.appendChild(lab);
-      const sel=document.createElement("select"); sel.className="fsel";
-      const none=document.createElement("option"); none.value=""; none.textContent="—"; sel.appendChild(none);
-      for(const f of enabledFactions()){ const o=document.createElement("option"); o.value=f.name; o.textContent=f.name+(factionNeed(f.name)?" *":""); sel.appendChild(o); }
-      sel.value = prev[i] && enabledFactions().some(f=>f.name===prev[i]) ? prev[i] : "";
-      sel.addEventListener("change", syncFactionSelects);   // Einmal-Auswahl erzwingen
-      row.appendChild(sel); box.appendChild(row);
+    if($("useFactions").checked){
+      for(let i=0;i<n;i++){
+        const row=document.createElement("div"); row.className="frow";
+        const lab=document.createElement("span"); lab.textContent="Spieler "+(i+1); row.appendChild(lab);
+        const sel=document.createElement("select"); sel.className="fsel";
+        const none=document.createElement("option"); none.value=""; none.textContent="—"; sel.appendChild(none);
+        for(const f of enabledFactions()){ const o=document.createElement("option"); o.value=f.name; o.textContent=f.name+(factionNeed(f.name)?" *":""); sel.appendChild(o); }
+        sel.value = prev[i] && enabledFactions().some(f=>f.name===prev[i]) ? prev[i] : "";
+        sel.addEventListener("change", syncFactionSelects);   // Einmal-Auswahl erzwingen
+        row.appendChild(sel); box.appendChild(row);
+      }
     }
     syncFactionSelects();
   }
   // Eine Fraktion darf nur einmal vergeben werden: bereits gewaehlte Optionen werden deaktiviert.
   function syncFactionSelects(){
-    const box=$("factions"); if(!box || !box.querySelectorAll) return;
-    const sels=box.querySelectorAll("select"), used={};
-    Array.prototype.forEach.call(sels, s=>{ if(s.value) used[s.value]=1; });
-    Array.prototype.forEach.call(sels, s=>{
-      const opts=s.options||[];
-      for(let i=0;i<opts.length;i++){ const o=opts[i]; o.disabled = !!(o.value && o.value!==s.value && used[o.value]); }
-    });
+    const box=$("factions");
+    if(box && box.querySelectorAll){
+      const sels=box.querySelectorAll("select"), used={};
+      Array.prototype.forEach.call(sels, s=>{ if(s.value) used[s.value]=1; });
+      Array.prototype.forEach.call(sels, s=>{
+        const opts=s.options||[];
+        for(let i=0;i<opts.length;i++){ const o=opts[i]; o.disabled = !!(o.value && o.value!==s.value && used[o.value]); }
+      });
+    }
+    updateContestEnabled();
+  }
+  // Der Nachbar-Schalter ist nur sinnvoll, wenn auch Fraktionen gewaehlt sind.
+  function updateContestEnabled(){
+    const cb=$("contestFeature"); if(!cb) return;
+    const facs=readFactions();
+    const any=!!facs && facs.some(f=>f);
+    cb.disabled=!any;
+    if(!any) cb.checked=false;
+    const lab=(typeof cb.closest==="function") ? cb.closest("label") : null;
+    if(lab && lab.classList) lab.classList.toggle("is-disabled", !any);
+    const hint=$("contestHint"); if(hint) hint.style.display = any ? "none" : "";
   }
   function readFactions(){
     if(!$("useFactions") || !$("useFactions").checked) return null;
@@ -906,7 +921,8 @@
         const layout=default_layouts.find(l=>l.title===title);
         const nOpen=layout ? layout.data.filter(c=>c.type===TYPE.OPEN).length : 30;
         const total=Math.min(10000, 3500 + nOpen*70);
-        const contest = $("contestFeature") ? $("contestFeature").checked : false;
+        const cbc=$("contestFeature");
+        const contest = !!(cbc && cbc.checked && !cbc.disabled);
         const r=generateRounds(title, pool, ratio, needWh, rng, total, 0.02, 4, factions, contest);
         if(r && r.error){ setStatus(`Zu wenige Tiles (${r.have}/${r.need}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
         if(!r){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
