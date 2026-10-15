@@ -187,7 +187,8 @@ Unterhalb der Karte steht auf der Webseite eine Legende; dieselbe Erklärung fin
 
 ## Designs
 
-Über das Dropdown **„Design“** lässt sich die Optik umschalten (gilt für Karte + Seite):
+Über das Dropdown **„Design“** lässt sich die Optik umschalten (gilt für Karte + Seite). Die Wahl wird im
+`localStorage` gespeichert und beim nächsten Aufruf wiederhergestellt.
 
 | Design | Stil |
 | --- | --- |

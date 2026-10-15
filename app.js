@@ -638,6 +638,15 @@
       techFill:"#0c0d0c", techStroke:"#c9d6a8", resinf:"#c9d0b8", scanlines:false },
   };
   function currentTheme(){ const sel=($("theme")&&$("theme").value)||"classic"; return THEMES[sel]?sel:"classic"; }
+  // Design-Einstellung im Browser speichern (uebersteht Reload).
+  const THEME_PREF_KEY = "ti4design";
+  function loadThemePref(){
+    try{ if(typeof localStorage==="undefined") return null; const v=localStorage.getItem(THEME_PREF_KEY); return (v && THEMES[v]) ? v : null; }
+    catch(e){ return null; }
+  }
+  function saveThemePref(k){
+    try{ if(typeof localStorage!=="undefined") localStorage.setItem(THEME_PREF_KEY, k); }catch(e){ /* z. B. privater Modus */ }
+  }
   function sysGlyphs(sys){
     const g=[];
     if(sys.anomalies!==null) g.push(sys.anomalies.map(a=>ANOM_LABEL[a]).join("/"));
@@ -741,7 +750,7 @@
   function fillThemes(){
     const sel=$("theme"); if(!sel) return; sel.innerHTML="";
     Object.keys(THEMES).forEach(kk=>{ const o=document.createElement("option"); o.value=kk; o.textContent=THEMES[kk].label; sel.appendChild(o); });
-    sel.value="classic";
+    sel.value = loadThemePref() || "classic";
   }
   function setStatus(t){ $("status").textContent=t; }
 
@@ -950,6 +959,7 @@
   }
   function onThemeChange(){
     if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
+    saveThemePref(currentTheme());
     renderLegend();
     if(cur) paint();
   }
@@ -989,5 +999,5 @@
   renderLegend();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction, legendHTML }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction, legendHTML, loadThemePref, saveThemePref }; }
 })();

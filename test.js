@@ -4,7 +4,8 @@ const fs=require("fs"), vm=require("vm"), path=require("path");
 function makeEl(){ return { value:"6", checked:true, style:{}, className:"", disabled:false, href:"", innerHTML:"", textContent:"", addEventListener(){}, select(){}, appendChild(){}, querySelectorAll(){ return []; }, options:[], selectedIndex:0 }; }
 const els={}; const document={ getElementById(id){ return els[id]||(els[id]=makeEl()); }, createElement(){ return makeEl(); } };
 const window={ setTimeout, console };
-const ctx={ console, document, window, navigator:{clipboard:{writeText(){}}}, performance:{now:()=>Date.now()}, setTimeout, Math, Object, Array, String, Number, Date, Image:function(){} };
+const _ls={}; const localStorage={ getItem(k){ return (k in _ls)?_ls[k]:null; }, setItem(k,v){ _ls[k]=String(v); }, removeItem(k){ delete _ls[k]; } };
+const ctx={ console, document, window, localStorage, navigator:{clipboard:{writeText(){}}}, performance:{now:()=>Date.now()}, setTimeout, Math, Object, Array, String, Number, Date, Image:function(){} };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,"data.js"),"utf8"), ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,"app.js"),"utf8"), ctx);
@@ -85,4 +86,16 @@ console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
   });
   console.log("Legende:", lg.length+" Zeichen", (miss.length||glued||pairOk.length)?("FEHLER "+miss.join(",")+ (glued?" [verklebt]":"")+ (pairOk.length?(" [nicht gepaart: "+pairOk.join(",")+"]"):"")):"alle Symbole erklärt und gepaart");
   if(miss.length||glued||pairOk.length){ fails++; console.log("FAILS="+fails); }
+}
+
+// ---- Design-Einstellung (localStorage) ----
+{
+  const p1=T.loadThemePref();                 // leer -> null
+  T.saveThemePref("retro");
+  const p2=T.loadThemePref();                 // -> "retro"
+  T.saveThemePref("quatsch");
+  const p3=T.loadThemePref();                 // ungueltig -> ignoriert -> null
+  const ok=(p1===null && p2==="retro" && p3===null);
+  console.log("Design-Pref:", ok?"gespeichert/geladen, ungueltige Werte ignoriert":("FEHLER "+[p1,p2,p3].join("/")));
+  if(!ok){ fails++; console.log("FAILS="+fails); }
 }
