@@ -25,6 +25,10 @@
   function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
   function shuffle(a,rng){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
   function range(a){ return Math.max.apply(null,a)-Math.min.apply(null,a); }
+  // Totzone: eine Differenz von 1 Einheit ist bei allen Evaluatoren Rauschen und wird
+  // ignoriert. So dominieren Evaluatoren mit kleiner Skala (z. B. Tech Access) nicht.
+  const GAP_DEADBAND = 1;
+  function relGap(g,D){ return Math.max(0, g-GAP_DEADBAND)/D; }
 
   // ---- Daten ----
   const planetByName = {}; planet_data.forEach(p => planetByName[p.name] = p);
@@ -141,9 +145,24 @@
     let nB = Math.round(nOpen*ratio); nB = Math.max(0, Math.min(nB, blue.length));
     let nR = nOpen-nB;
     if(nR > red.length){ nR = red.length; nB = Math.min(nOpen-nR, blue.length); }
-    let sel = shuffle(blue.slice(),rng).slice(0,nB).concat(shuffle(red.slice(),rng).slice(0,nR));
-    sel = balanceWormholes(sel, blue, red, wantWh, rng);
-    return sel;
+    const build = ()=>shuffle(blue.slice(),rng).slice(0,nB).concat(shuffle(red.slice(),rng).slice(0,nR));
+    if(!wantWh) return build();
+    const aOf = sel=>sel.filter(x=>x.wormhole===WORMHOLES.ALPHA).length;
+    const bOf = sel=>sel.filter(x=>x.wormhole===WORMHOLES.BETA).length;
+    for(let t=0;t<300;t++){
+      const sel=balanceWormholes(build(), blue, red, true, rng);
+      const a=aOf(sel), b=bOf(sel);
+      if(a===b && a>=1) return sel;   // garantiert mindestens ein korrektes Paar
+    }
+    // Notfall (praktisch nie): Wormholes durch gleichfarbige Nicht-Wormholes ersetzen
+    const sel=build(), used={}; sel.forEach(t=>used[t.id]=1);
+    const repl=(blueFlag)=>(blueFlag?blue:red).filter(x=>x.wormhole===null && !used[x.id]);
+    return sel.map(t=>{
+      if(t.wormhole===null) return t;
+      const r=repl(isBlue(t));
+      if(r.length){ const pick=r[0]; used[pick.id]=1; return pick; }
+      return t;
+    });
   }
 
   function balanceWormholes(sel, blue, red, wantPairs, rng){
@@ -218,47 +237,7 @@
     return ok;
   }
 
-  function hillClimb(st, place, vals, deadline){
-    const keys=Object.keys(place), ev=st.eval;
-    let improved=true, guard=0;
-    while(improved && guard++<400 && performance.now()<deadline){
-      improved=false;
-      for(let i=0;i<keys.length;i++){
-        for(let j=i+1;j<keys.length;j++){
-          const a=keys[i], b=keys[j];
-          const va=ev.sysVal(place[a]), vb=ev.sysVal(place[b]);
-          if(va===vb) continue;
-          if(!swapLegal(st,place,a,b)) continue;
-          let nmin=Infinity, nmax=-Infinity;
-          for(let h=0; h<vals.length; h++){
-            const nv = vals[h] + (vb-va)*((st.homeW[h][a]||0)-(st.homeW[h][b]||0));
-            if(nv<nmin)nmin=nv; if(nv>nmax)nmax=nv;
-          }
-          if(nmax-nmin < range(vals)){
-            for(let h=0; h<vals.length; h++) vals[h] += (vb-va)*((st.homeW[h][a]||0)-(st.homeW[h][b]||0));
-            const t=place[a]; place[a]=place[b]; place[b]=t;
-            improved=true;
-          }
-        }
-      }
-    }
-  }
-
-  function optimize(st, budgetMs, rng){
-    const deadline=performance.now()+budgetMs;
-    let best=null, bestGap=Infinity;
-    while(performance.now()<deadline){
-      const place=randomFill(st,rng);
-      if(!place) continue;
-      const vals=computeVals(st,place);
-      hillClimb(st,place,vals,deadline);
-      const g=range(vals);
-      if(g<bestGap){ bestGap=g; best={ place:Object.assign({},place), vals:vals.slice() }; if(g===0) break; }
-    }
-    return best;
-  }
-
-  // ---- Zweistufige Optimierung: Simple Slice -> Joebrew ----
+  // ---- Optimierung ueber beliebig viele Evaluatoren ----
   const IDX_SLICE = (function(){ const i=default_evaluators.findIndex(e=>e.title==="Simple Slice"); return i<0?0:i; })();
   const IDX_JOE = (function(){ const i=default_evaluators.findIndex(e=>e.title==="Joebrew"); return i<0?Math.min(1,default_evaluators.length-1):i; })();
   let _evS=null, _evJ=null;
@@ -273,71 +252,196 @@
     return vals;
   }
 
-  // Direkte Optimierung der kombinierten Zielfunktion gap(A)+gap(B).
-  // Nutzt vorberechnete Gewichte (wa/wb) und Systemwerte (valA/valB).
-  function hillClimbCombined(st, wa, wb, valA, valB, place, deadline){
+  // ---- Generalisierte Optimierung ueber beliebig viele Evaluatoren ----
+  function valsE(place, E, homes, rexKey){
+    const nH=homes.length, v=new Array(nH).fill(0);
+    for(const pos in place){ const a=E.val[place[pos].id]; if(!a) continue;
+      for(let h=0;h<nH;h++){ const w=E.w[h][pos]; if(w) v[h]+=a*w; } }
+    if(rexKey){ const ra=E.val[REX_ID];
+      for(let h=0;h<nH;h++){ const w=E.w[h][rexKey]; if(w) v[h]+=ra*w; } }
+    return v;
+  }
+
+  // Ein einzelner Evaluator: Tausch-Suche auf min(max-min).
+  function climbOne(st, place, E, deadline){
     const keys=Object.keys(place), nH=st.homes.length;
-    const vA=new Array(nH).fill(0), vB=new Array(nH).fill(0);
-    for(const pos in place){
-      const a=valA[place[pos].id], b=valB[place[pos].id];
-      for(let h=0;h<nH;h++){ vA[h]+=a*(wa[h][pos]||0); vB[h]+=b*(wb[h][pos]||0); }
-    }
-    if(st.rexKey){ const ra=valA[REX_ID], rb=valB[REX_ID];
-      for(let h=0;h<nH;h++){ vA[h]+=ra*(wa[h][st.rexKey]||0); vB[h]+=rb*(wb[h][st.rexKey]||0); } }
+    const v=valsE(place,E,st.homes,st.rexKey);
     let improved=true, guard=0;
-    while(improved && guard++<300 && performance.now()<deadline){
+    while(improved && guard++<200 && performance.now()<deadline){
       improved=false;
-      for(let i=0;i<keys.length;i++){
-        for(let j=i+1;j<keys.length;j++){
-          const p=keys[i], q=keys[j];
-          const a1=valA[place[p].id], b1=valB[place[p].id];
-          const a2=valA[place[q].id], b2=valB[place[q].id];
-          if(a1===a2 && b1===b2) continue;
-          if(!swapLegal(st,place,p,q)) continue;
-          let nAmin=Infinity,nAmax=-Infinity,nBmin=Infinity,nBmax=-Infinity;
-          for(let h=0;h<nH;h++){
-            const nA=vA[h]+(a2-a1)*((wa[h][p]||0)-(wa[h][q]||0));
-            const nB=vB[h]+(b2-b1)*((wb[h][p]||0)-(wb[h][q]||0));
-            if(nA<nAmin)nAmin=nA; if(nA>nAmax)nAmax=nA;
-            if(nB<nBmin)nBmin=nB; if(nB>nBmax)nBmax=nB;
+      for(let i=0;i<keys.length;i++) for(let j=i+1;j<keys.length;j++){
+        const p=keys[i], q=keys[j];
+        const a1=E.val[place[p].id], a2=E.val[place[q].id]; if(a1===a2) continue;
+        if(!swapLegal(st,place,p,q)) continue;
+        let mn=Infinity, mx=-Infinity;
+        for(let h=0;h<nH;h++){ const nv=v[h]+(a2-a1)*((E.w[h][p]||0)-(E.w[h][q]||0)); if(nv<mn)mn=nv; if(nv>mx)mx=nv; }
+        if(mx-mn < range(v)){
+          for(let h=0;h<nH;h++) v[h]+=(a2-a1)*((E.w[h][p]||0)-(E.w[h][q]||0));
+          const t=place[p]; place[p]=place[q]; place[q]=t; improved=true;
+        }
+      }
+    }
+    return v;
+  }
+
+  // Alle Evaluatoren zugleich. Verglichen werden RELATIVE Gaps (gap/getBasiswert),
+  // weil die Evaluatoren unterschiedliche Einheiten haben. Erstrangig max., dann Summe.
+  function hillClimbAll(st, place, Es, deadline){
+    const keys=Object.keys(place), nH=st.homes.length, nE=Es.length;
+    const V=Es.map(E=>valsE(place,E,st.homes,st.rexKey));
+    const dens=()=>V.map(v=>{ let a=0; for(const x of v){ const ax=Math.abs(x); if(ax>a)a=ax; } return Math.max(1,a); });
+    const relOf=(g,D)=>{ let s=0,m=0; for(let e=0;e<nE;e++){ const r=relGap(g[e],D[e]); s+=r; if(r>m)m=r; } return [s+8*m, m]; };
+    let improved=true, guard=0;
+    while(improved && guard++<400 && performance.now()<deadline){
+      improved=false;
+      const D=dens();
+      const g0=V.map(v=>range(v));
+      const res=relOf(g0,D);
+      let cur=res[0], curMax=res[1];
+      for(let i=0;i<keys.length;i++) for(let j=i+1;j<keys.length;j++){
+        const p=keys[i], q=keys[j];
+        let any=false;
+        const d=new Array(nE);
+        for(let e=0;e<nE;e++){ const a1=Es[e].val[place[p].id], a2=Es[e].val[place[q].id]; d[e]=a2-a1; if(a2!==a1) any=true; }
+        if(!any) continue;
+        if(!swapLegal(st,place,p,q)) continue;
+        const ng=new Array(nE);
+        for(let e=0;e<nE;e++){
+          const w=Es[e].w; let mn=Infinity, mxx=-Infinity;
+          for(let h=0;h<nH;h++){ const nv=V[e][h]+d[e]*((w[h][p]||0)-(w[h][q]||0)); if(nv<mn)mn=nv; if(nv>mxx)mxx=nv; }
+          ng[e]=mxx-mn;
+        }
+        const nr=relOf(ng,D), ns=nr[0], nmx=nr[1];
+        if(ns < cur-1e-12 || (Math.abs(ns-cur)<1e-12 && nmx<curMax)){
+          for(let e=0;e<nE;e++){ const w=Es[e].w;
+            for(let h=0;h<nH;h++) V[e][h]+=d[e]*((w[h][p]||0)-(w[h][q]||0)); }
+          const t=place[p]; place[p]=place[q]; place[q]=t;
+          improved=true; cur=ns; curMax=nmx;
+        }
+      }
+    }
+    return V;
+  }
+
+  // Relative Gaps (gap / groesster Betrag) fuer eine Belegung.
+  function gapsRel(place, Es, homes, rexKey){
+    return Es.map(function(E){
+      const v=valsE(place,E,homes,rexKey);
+      let a=0; for(const x of v){ const ax=Math.abs(x); if(ax>a)a=ax; }
+      return relGap(range(v), Math.max(1,a));
+    });
+  }
+
+  // Findet Evaluatoren, die nach der Optimierung noch "einseitig" sind
+  // (z. B. Ressourcen fair, aber Influence schief). Schwelle ist ein relativer Gap.
+  function oneSided(rel, Es, thr){
+    const out=[];
+    for(let i=0;i<rel.length;i++) if(rel[i]>thr) out.push(shortName(Es[i].name)+" "+(rel[i]*100).toFixed(1)+"%");
+    return out;
+  }
+
+  // Gewichte + Systemwerte fuer ALLE Evaluatoren vorberechnen.
+  function prepareEvals(st){
+    const all = st.allPool || st.pool;
+    return default_evaluators.map(function(e){
+      const ev=makeEval(e.data);
+      st.eval=ev; const w=computeHomeW(st);
+      const val={};
+      for(const sy of all) val[sy.id]=ev.sysVal(sy);
+      val[REX_ID]=ev.sysVal(SYS[REX_ID]);
+      return { name:e.title, ev:ev, w:w, val:val };
+    });
+  }
+
+  // Bank-Tausch: platzierte Systeme gegen gleichfarbige, aktuell NICHT platzierte Tiles
+  // ersetzen (Bank = allPool minus platzierte). Zustandslos -> keine Dubletten. Da nur
+  // gleichfarbige Tiles gleichen Wormhole-Typs getauscht werden, bleiben Blue/Red-Ver-
+  // haeltnis und Wormhole-Paare erhalten.
+  function bankClimb(st, place, Es, deadline){
+    const all = st.allPool;
+    if(!all || !all.length) return;
+    const nE=Es.length, nH=st.homes.length, keys=Object.keys(place);
+    const V=Es.map(E=>valsE(place,E,st.homes,st.rexKey));
+    const dens=()=>V.map(v=>{ let a=0; for(const x of v){ const ax=Math.abs(x); if(ax>a)a=ax; } return Math.max(1,a); });
+    const relOf=(g,D)=>{ let s=0,m=0; for(let e=0;e<nE;e++){ const r=relGap(g[e],D[e]); s+=r; if(r>m)m=r; } return [s+8*m,m]; };
+    let improved=true, guard=0;
+    while(improved && guard++<40 && performance.now()<deadline){
+      improved=false;
+      const D=dens();
+      const placed={}; for(const pos of keys) placed[place[pos].id]=1;
+      const bank=all.filter(s=>!placed[s.id]);
+      const res=relOf(V.map(v=>range(v)),D);
+      let cur=res[0], curMax=res[1];
+      for(const pos of keys){
+        const old=place[pos], oldBlue=isBlue(old), oldWh=old.wormhole;
+        for(const t of bank.slice()){
+          if(t.id===old.id || isBlue(t)!==oldBlue || t.wormhole!==oldWh) continue;
+          if(bank.indexOf(t)<0) continue;              // schon verbraucht
+          place[pos]=t;
+          const bad=sysConflicts(st,place,pos,t);
+          place[pos]=old;
+          if(bad) continue;
+          const ng=new Array(nE);
+          for(let e=0;e<nE;e++){
+            const dv=Es[e].val[t.id]-Es[e].val[old.id];
+            let mn=Infinity, mx=-Infinity;
+            for(let h=0;h<nH;h++){ const nv=V[e][h]+dv*(Es[e].w[h][pos]||0); if(nv<mn)mn=nv; if(nv>mx)mx=nv; }
+            ng[e]=mx-mn;
           }
-          if((nAmax-nAmin)+(nBmax-nBmin) < range(vA)+range(vB)){
-            for(let h=0;h<nH;h++){
-              vA[h]+=(a2-a1)*((wa[h][p]||0)-(wa[h][q]||0));
-              vB[h]+=(b2-b1)*((wb[h][p]||0)-(wb[h][q]||0));
-            }
-            const t=place[p]; place[p]=place[q]; place[q]=t;
+          const nr=relOf(ng,D), ns=nr[0], nmx=nr[1];
+          if(ns<cur-1e-12 || (Math.abs(ns-cur)<1e-12 && nmx<curMax)){
+            for(let e=0;e<nE;e++){ const dv=Es[e].val[t.id]-Es[e].val[old.id];
+              for(let h=0;h<nH;h++) V[e][h]+=dv*(Es[e].w[h][pos]||0); }
+            place[pos]=t;
+            bank.splice(bank.indexOf(t),1); bank.push(old);   // lokal: neu raus, alt rein
             improved=true;
+            const r2=relOf(V.map(v=>range(v)),D); cur=r2[0]; curMax=r2[1];
+            break;
           }
         }
       }
     }
   }
 
-  // Restart-Schleife: pro Durchlauf A,B,A,B (endet auf B), danach direkte
-  // Optimierung von gap(A)+gap(B). Behaelt die beste kombinierte Karte.
-  function optimizePair(st, evA, evB, budgetMs, rng, prep){
-    const deadline=performance.now()+budgetMs;
-    const passes = (evB!==evA) ? [evA,evB,evA,evB] : [evA];
-    const stage=Math.max(120, budgetMs/(passes.length+2));
-    let best=null, bestScore=Infinity;
-    while(performance.now()<deadline){
-      st.eval=evA; st.homeW=computeHomeW(st);
-      const place=randomFill(st,rng); if(!place) continue;
-      let over=false;
-      for(const ev of passes){
-        if(performance.now()>=deadline){ over=true; break; }
-        st.eval=ev; st.homeW=computeHomeW(st);
-        const vals=computeVals(st,place);
-        hillClimb(st,place,vals,Math.min(deadline, performance.now()+stage));
-      }
-      if(prep) hillClimbCombined(st, prep.wa, prep.wb, prep.valA, prep.valB, place, Math.min(deadline, performance.now()+stage));
-      const vA=evalUnder(st,place,evA), vB=evalUnder(st,place,evB);
-      const score=range(vA)+range(vB);
-      if(score<bestScore){ bestScore=score; best={ place:Object.assign({},place) }; if(score===0) break; }
-      if(over) break;
+  // Ein paar legale Zufallstausche (Kick) fuer Iterated Local Search.
+  function perturb(st, place, rng, n){
+    const keys=Object.keys(place);
+    for(let t=0;t<n;t++){
+      const a=keys[Math.floor(rng()*keys.length)], b=keys[Math.floor(rng()*keys.length)];
+      if(a===b || !swapLegal(st,place,a,b)) continue;
+      const tmp=place[a]; place[a]=place[b]; place[b]=tmp;
     }
-    return best;
+  }
+
+  function generateFull(st, Es, rng, budgetMs, targetRel){
+    const deadline=performance.now()+budgetMs;
+    const stage=Math.max(120, budgetMs/10);
+    const iS=IDX_SLICE, iJ=IDX_JOE;
+    let best=null, bestScore=Infinity, bestGaps=null, bestRel=null;
+    let cur=null, sinceImprove=0, STALL=20;
+    while(performance.now()<deadline){
+      if(!cur || sinceImprove>STALL){
+        const p=randomFill(st,rng); if(!p) continue;
+        climbOne(st,p,Es[iS],Math.min(deadline, performance.now()+stage));
+        climbOne(st,p,Es[iJ],Math.min(deadline, performance.now()+stage));
+        hillClimbAll(st,p,Es,Math.min(deadline, performance.now()+stage*2));
+        bankClimb(st,p,Es,Math.min(deadline, performance.now()+stage));
+        cur=p; sinceImprove=0;
+      } else {
+        perturb(st, cur, rng, 2+Math.floor(rng()*5));
+        hillClimbAll(st,cur,Es,Math.min(deadline, performance.now()+stage*2));
+        bankClimb(st,cur,Es,Math.min(deadline, performance.now()+stage));
+      }
+      const rel=gapsRel(cur,Es,st.homes,st.rexKey);
+      const gaps=Es.map(E=>range(valsE(cur,E,st.homes,st.rexKey)));
+      let s=0,m=0; for(const g of rel){ s+=g; if(g>m)m=g; }
+      const score=s+8*m;
+      if(score<bestScore-1e-12){
+        bestScore=score; bestGaps=gaps; bestRel=rel; best={ place:Object.assign({},cur) }; sinceImprove=0;
+        if(m<=targetRel) break;
+      } else sinceImprove++;
+    }
+    return best ? { place:best.place, gaps:bestGaps, rel:bestRel, score:bestScore } : null;
   }
 
   // ---- Rendering ----
@@ -440,14 +544,19 @@
     sel.value=String(IDX_JOE);   // Anzeige standardmäßig Joebrew (Pipeline endet auf Joebrew)
   }
   function setStatus(t){ $("status").textContent=t; }
-  function curEval(){ return makeEval(default_evaluators[+$("evaluator").value].data); }
+
+  function shortName(t){
+    return t==="Simple Slice"?"Slice":t==="Joebrew"?"Joebrew":t==="Resource Access"?"Res":
+           t==="Influence Access"?"Inf":t==="Tech Access"?"Tech":t;
+  }
 
   function paint(){
-    const st=cur.st, place=cur.place, vals=cur.vals, s=stats(st,place);
-    const gSel=range(vals);
-    const gSlice=range(evalUnder(st,place,evSlice()));
-    const gJoe=range(evalUnder(st,place,evJoe()));
-    const selName=default_evaluators[+$("evaluator").value].title;
+    const st=cur.st, place=cur.place, prep=cur.prep, s=stats(st,place);
+    const selIdx=+$("evaluator").value;
+    const vals=valsE(place, prep[selIdx], st.homes, st.rexKey);
+    const gaps=prep.map(E=>range(valsE(place,E,st.homes,st.rexKey)));
+    const rel=gapsRel(place, prep, st.homes, st.rexKey);
+    const maxRel=Math.max.apply(null,rel);
     $("map").innerHTML=render(st,place,vals);
     $("mapstring").value=mapString(st,place);
     let pills =
@@ -455,37 +564,60 @@
       `<span class="pill">Res/Inf <b>${s.res}/${s.inf}</b></span>`+
       `<span class="pill">Tech <b>${s.tech||"-"}</b></span>`+
       `<span class="pill">Traits R/G/B <b>${s.traits}</b></span>`+
-      `<span class="pill">Wormholes α/β <b>${s.wh}</b></span>`;
-    if(selName!=="Simple Slice") pills += `<span class="pill ${gSlice===0?"good":"warn"}">Gap Simple Slice <b>${gSlice}</b></span>`;
-    if(selName!=="Joebrew") pills += `<span class="pill ${gJoe===0?"good":"warn"}">Gap Joebrew <b>${gJoe}</b></span>`;
-    pills += `<span class="pill ${gSel===0?"good":"warn"}">Gap ${selName} <b>${gSel}</b></span>`;
+      `<span class="pill ${s.wh.split("/")[0]===s.wh.split("/")[1]?"good":"bad"}">Wormholes α/β <b>${s.wh}</b></span>`;
+    prep.forEach(function(E,i){ const g=gaps[i];
+      pills += `<span class="pill ${rel[i]===0?"good":(rel[i]<=0.02?"warn":"bad")}">Gap ${shortName(E.name)} <b>${g}</b></span>`; });
+    pills += `<span class="pill ${maxRel<=0.02?"good":"warn"}">Max Gap <b>${(maxRel*100).toFixed(1)}%</b></span>`;
+    const side=oneSided(rel, prep, 0.02);
+    pills += `<span class="pill ${side.length?"warn":"good"}">Einseitig <b>${side.length?side.join(", "):"keine"}</b></span>`;
     $("stats").innerHTML = pills;
-    setStatus(`Home-Werte (${selName}): ${vals.join(" / ")}`);
+    setStatus(side.length
+      ? `Volloptimiert über alle ${prep.length} Bewertungen – Rest: ${side.join(", ")}. „Karte generieren“ liefert evtl. eine noch flachere Variante.`
+      : `Volloptimiert: alle ${prep.length} Bewertungen ausgeglichen (max. Gap ${(maxRel*100).toFixed(1)}%). Home-Werte (${prep[selIdx].name}): ${vals.join(" / ")}`);
+  }
+
+  // Vollautomatische Karten-Suche ueber mehrere Runden: pro Runde ein frischer
+  // Tile-Vorrat + komplette Optimierung ueber ALLE Bewertungen. Ein Gesamtbudget
+  // wird auf die Runden verteilt; abgebrochen wird, sobald nichts mehr einseitig ist.
+  // Liefert { st, prep, res, mx } oder null; bei zu kleinem Pool { error:"tiles", ... }.
+  function generateRounds(title, pool, ratio, wantWh, rng, totalMs, targetRel, maxRounds){
+    const t0=performance.now(), rounds=Math.max(1, maxRounds||4);
+    let best=null;
+    for(let r=0; r<rounds; r++){
+      const left=totalMs-(performance.now()-t0);
+      if(left<600 && best) break;
+      const st=buildState(title, pool, evSlice());
+      st.pool=chooseTiles(pool, st.opens.length, ratio, wantWh, rng);
+      if(st.pool.length<st.opens.length) return { error:"tiles", have:st.pool.length, need:st.opens.length };
+      st.allPool=pool;
+      const Es=prepareEvals(st);
+      st.eval=Es[IDX_SLICE].ev; st.homeW=Es[IDX_SLICE].w;
+      const per=Math.max(900, Math.floor(left/(rounds-r)));
+      const res=generateFull(st, Es, rng, per, targetRel);
+      if(!res) continue;
+      const mx=Math.max.apply(null, res.rel);
+      if(!best || mx<best.mx) best={ st:st, prep:Es, res:res, mx:mx };
+      if(mx<=targetRel) break;                       // vollstaendig ausgeglichen -> fertig
+    }
+    return best;
   }
 
   function generate(){
-    const p=$("players").value, title=$("layout").value;
+    const title=$("layout").value;
     const pool=buildPool($("base").checked,$("pok").checked,$("te").checked);
     if(!pool.length){ setStatus("Kein Tile-Vorrat (Erweiterung wählen)."); return; }
-    setStatus("Berechne …"); $("generate").disabled=true;
+    setStatus("Berechne & optimiere über alle Bewertungen …"); $("generate").disabled=true;
     setTimeout(()=>{
       try{
         const rng=mulberry32((Math.random()*1e9)|0);
-        const st=buildState(title,pool,curEval());
-        st.pool=chooseTiles(pool,st.opens.length,(+$("ratio").value)/100,$("wh").checked,rng);
-        if(st.pool.length<st.opens.length){ setStatus(`Zu wenige Tiles (${st.pool.length}/${st.opens.length}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
-        const evA=evSlice(), evB=evJoe();
-        st.eval=evA; const wa=computeHomeW(st);
-        st.eval=evB; const wb=computeHomeW(st);
-        const valA={}, valB={};
-        for(const sy of st.pool){ valA[sy.id]=evA.sysVal(sy); valB[sy.id]=evB.sysVal(sy); }
-        valA[REX_ID]=evA.sysVal(SYS[REX_ID]); valB[REX_ID]=evB.sysVal(SYS[REX_ID]);
-        st.eval=evA; st.homeW=wa;
-        const budget=Math.min(6000, 1800 + st.opens.length*60);
-        const best=optimizePair(st, evA, evB, budget, rng, {wa:wa, wb:wb, valA:valA, valB:valB});
-        if(!best){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
-        st.eval=curEval(); st.homeW=computeHomeW(st);
-        cur={ st:st, place:best.place, vals:computeVals(st,best.place) };
+        const ratio=(+$("ratio").value)/100, wantWh=$("wh").checked;
+        const layout=default_layouts.find(l=>l.title===title);
+        const nOpen=layout ? layout.data.filter(c=>c.type===TYPE.OPEN).length : 30;
+        const total=Math.min(10000, 3500 + nOpen*70);
+        const r=generateRounds(title, pool, ratio, wantWh, rng, total, 0.02, 4);
+        if(r && r.error){ setStatus(`Zu wenige Tiles (${r.have}/${r.need}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
+        if(!r){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
+        cur={ st:r.st, place:r.res.place, prep:r.prep, gaps:r.res.gaps };
         paint();
       } catch(e){ setStatus("Fehler: "+e.message); console.error(e); }
       $("generate").disabled=false;
@@ -494,9 +626,10 @@
 
   function improve(){
     if(!cur) return;
-    setStatus("Verbessere …"); $("improve").disabled=true;
+    setStatus("Optimiere über alle Bewertungen …"); $("improve").disabled=true;
     setTimeout(()=>{
-      try{ hillClimb(cur.st, cur.place, cur.vals, performance.now()+1500); paint(); }
+      try{ hillClimbAll(cur.st, cur.place, cur.prep, performance.now()+1500);
+           bankClimb(cur.st, cur.place, cur.prep, performance.now()+1200); paint(); }
       catch(e){ setStatus("Fehler: "+e.message); }
       $("improve").disabled=false;
     },20);
@@ -504,9 +637,6 @@
 
   function onEvaluatorChange(){
     if(!cur) return;
-    cur.st.eval=curEval();
-    cur.st.homeW=computeHomeW(cur.st);
-    cur.vals=computeVals(cur.st, cur.place);
     paint();
   }
 
@@ -540,5 +670,5 @@
   fillLayouts(); fillEvaluators();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, optimize, optimizePair, evalUnder, evSlice, evJoe, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, balanceWormholes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators }; }
 })();

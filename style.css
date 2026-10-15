@@ -38,6 +38,7 @@ button[disabled]{ opacity:.6; cursor:default; }
 .pill b{ color:var(--fg); }
 .pill.good{ border-color:#2e7d32; }
 .pill.warn{ border-color:#b8912a; }
+.pill.bad{ border-color:#c0392b; }
 
 .mapbox{ background:#07070c; border:1px solid var(--line); border-radius:10px;
   overflow:auto; padding:6px; }
