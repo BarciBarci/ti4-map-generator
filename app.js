@@ -721,20 +721,33 @@
     let out="";
     if(sys.anomalies!==null) for(const a of sys.anomalies){
       if(a===ANOMALIES.SUPERNOVA){
-        out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.44)}" fill="url(#aNova)"/>`
+        out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.58)}" fill="#ff9a3c" opacity="0.32" filter="url(#fGlow)">`
+             + `<animate attributeName="opacity" values="0.18;0.44;0.18" dur="4s" repeatCount="indefinite"/></circle>`
+             + `<circle cx="${cx}" cy="${cy}" r="${f(S*0.44)}" fill="url(#aNova)"/>`
              + `<circle cx="${cx}" cy="${cy}" r="${f(S*0.13)}" fill="#fffdf2"/>`;
         for(let i=0;i<8;i++){ const an=i*Math.PI/4, r1=S*0.15, r2=S*0.30;
           out += `<line x1="${f(cx+Math.cos(an)*r1)}" y1="${f(cy+Math.sin(an)*r1)}" x2="${f(cx+Math.cos(an)*r2)}" y2="${f(cy+Math.sin(an)*r2)}" stroke="#ffd27a" stroke-width="1.2" opacity="0.75"/>`; }
       } else if(a===ANOMALIES.NEBULA){
+        out += `<g filter="url(#fNeb)">`;
         for(const w of [[-6,-3,13,0.55],[6,2,11,0.5],[0,6,9,0.45],[-4,5,8,0.4]])
           out += `<circle cx="${f(cx+w[0]*S/30)}" cy="${f(cy+w[1]*S/30)}" r="${f(w[2]*S/30)}" fill="url(#aNeb)" opacity="${w[3]}"/>`;
+        out += `</g>`;
       } else if(a===ANOMALIES.ASTEROID_FIELD){
-        for(const w of [[-9,-5,2.4],[3,-8,1.7],[10,1,2.7],[-3,7,1.9],[-12,4,1.3],[2,10,1.5],[11,-6,1.2]])
-          out += `<circle cx="${f(cx+w[0]*S/30)}" cy="${f(cy+w[1]*S/30)}" r="${f(w[2]*S/30)}" fill="#7d8794" stroke="#2a323a" stroke-width="0.4"/>`;
+        // Unregelaessige Felsbrocken statt Kreise (deterministisch je Position).
+        for(const w of [[-9,-5,2.4,1],[3,-8,1.7,2],[10,1,2.7,3],[-3,7,1.9,4],[-12,4,1.3,5],[2,10,1.5,6],[11,-6,1.2,7]]){
+          const rx=cx+w[0]*S/30, ry=cy+w[1]*S/30, rad=w[2]*S/30, sd=w[3];
+          let pts="";
+          for(let k2=0;k2<6;k2++){ const an=k2*Math.PI/3, rr=rad*(0.72+0.42*((Math.sin(sd*13.1+k2*7.7)+1)/2));
+            pts += f(rx+Math.cos(an)*rr)+","+f(ry+Math.sin(an)*rr)+" "; }
+          out += `<polygon points="${pts}" fill="#8a93a0" stroke="#2a323a" stroke-width="0.5"/>`;
+        }
       } else if(a===ANOMALIES.GRAVITY_RIFT){
-        out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.38)}" fill="url(#aRift)"/>`;
-        for(let i=0;i<3;i++){ const r=f(S*(0.34-i*0.09));
-          out += `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${f(r*0.55)}" fill="none" stroke="#7f68e0" stroke-width="1" opacity="${f(0.55-i*0.15)}" transform="rotate(${-20+i*18} ${cx} ${cy})"/>`; }
+        out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.46)}" fill="#3a1b6e" opacity="0.35" filter="url(#fGlow)"/>`
+             + `<circle cx="${cx}" cy="${cy}" r="${f(S*0.38)}" fill="url(#aRift)"/>`;
+        out += `<g><animateTransform attributeName="transform" type="rotate" from="0 ${cx} ${cy}" to="360 ${cx} ${cy}" dur="26s" repeatCount="indefinite"/>`;
+        for(let i=0;i<4;i++){ const r=f(S*(0.36-i*0.07));
+          out += `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${f(r*0.55)}" fill="none" stroke="#8f78f0" stroke-width="1" opacity="${f(0.6-i*0.12)}" transform="rotate(${-20+i*18} ${cx} ${cy})"/>`; }
+        out += `</g>`;
       } else if(a===ANOMALIES.ENTROPIC_SCAR){
         const pts=[[-11,-8],[-5,-3],[-8,2],[0,6],[6,3],[10,8]].map(p=>f(cx+p[0]*S/30)+","+f(cy+p[1]*S/30)).join(" ");
         out += `<polyline points="${pts}" fill="none" stroke="#9a6bff" stroke-width="2.4" opacity="0.55"/>`
@@ -815,8 +828,13 @@
           const pfill = isReal
             ? ((["url(#pRed)","url(#pGreen)","url(#pBlue)"][(pl.traits&&pl.traits.length)?pl.traits[0]:-1]) || "url(#pGrey)")
             : ((pl.traits&&pl.traits.length)?(th.trait[pl.traits[0]]||th.traitNone):th.traitNone);
+          // Ringplanet: deterministisch fuer ~1/3 der Planeten (stabil je System).
+          const ringed = isReal && (((((pl.name||"").length*7 + pl.resources*13 + pl.influence*5) % 3) === 0));
+          const rrx=+(discR*1.95).toFixed(1), rry=+(discR*0.62).toFixed(1);
+          if(ringed) content += `<g transform="rotate(-18 ${px} ${py})"><ellipse cx="${px}" cy="${py}" rx="${rrx}" ry="${rry}" fill="none" stroke="url(#gRing)" stroke-width="1.6" opacity="0.5"/></g>`;
           content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${pfill}" stroke="${isReal?"#0a1018":th.stroke}" stroke-width="${(th.sw*0.8).toFixed(2)}"/>`;
           if(isReal) content += `<circle cx="${(px-discR*0.34).toFixed(1)}" cy="${(py-discR*0.34).toFixed(1)}" r="${(discR*0.30).toFixed(1)}" fill="#ffffff" opacity="0.22"/>`;
+          if(ringed) content += `<g transform="rotate(-18 ${px} ${py})"><path d="M ${(px-rrx).toFixed(1)} ${py} A ${rrx} ${rry} 0 0 0 ${(px+rrx).toFixed(1)} ${py}" fill="none" stroke="url(#gRing)" stroke-width="1.6" opacity="0.85"/></g>`;
           if(pl.tech_specialties && pl.tech_specialties.length){
             const bx=(px+discR*0.75).toFixed(1), by=(py-discR*0.75).toFixed(1);
             content += `<circle cx="${bx}" cy="${by}" r="4.2" fill="${th.techFill}" stroke="${th.techStroke}" stroke-width="0.6"/>`
@@ -847,6 +865,13 @@
         `<radialGradient id="wA" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#7fe3ff" stop-opacity="0.85"/><stop offset="55%" stop-color="#2a6a9a" stop-opacity="0.55"/><stop offset="100%" stop-color="#071424" stop-opacity="0"/></radialGradient>`+
         `<radialGradient id="wB" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#e0b6ff" stop-opacity="0.85"/><stop offset="55%" stop-color="#7a3fa8" stop-opacity="0.55"/><stop offset="100%" stop-color="#1a0f2e" stop-opacity="0"/></radialGradient>`+
         `<linearGradient id="gStar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe89a"/><stop offset="100%" stop-color="#c98a10"/></linearGradient>`+
+        `<linearGradient id="gRing" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4a5f78"/><stop offset="45%" stop-color="#d8e6f5"/><stop offset="100%" stop-color="#8fa6c0"/></linearGradient>`+
+        `<filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.2"/></filter>`+
+        `<filter id="fNeb" x="-35%" y="-35%" width="170%" height="170%">`+
+          `<feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="3" seed="7" result="n"/>`+
+          `<feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/>`+
+          `<feGaussianBlur stdDeviation="0.8"/>`+
+        `</filter>`+
       `</defs>`;
       let sd=7;
       const rnd=()=>{ sd=(sd*1103515245+12345)&0x7fffffff; return sd/0x7fffffff; };
