@@ -1,5 +1,7 @@
 # TI4 Balanced Map Generator
 
+**by Barci + AI** – ein nicht-kommerzielles Fan-Projekt.
+
 Eine kleine, rein clientseitige Web-App, die **ausgeglichene Twilight-Imperium-4-Karten für 3–6 Spieler** erzeugt
 und den passenden **Map-String** sowie eine gerenderte Übersicht ausgibt.
 
@@ -30,8 +32,9 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
   (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
   **in Reichweite** des jeweiligen Heimatsystems; optional **möglichst auch für die Nachbarn erreichbar**
   (umkämpfte Randzone). Eine Fraktion ist nur einmal wählbar – siehe Abschnitt unten.
-- **Design-Umschalter:** Classic (dunkel), **Retro 8-Bit** (kräftige Farben, dicke Outlines, Scanlines,
-  Monospace) und **Biomech/Giger** (entsättigt, Knochen-/Asche-Töne mit Säuregrün). Vorschauen in `previews/`.
+- **Design-Umschalter:** **Realistisch** (Standard), **Druck (hell)**, Classic (dunkel), **Retro 8-Bit**
+  (kräftige Farben, dicke Outlines, Scanlines, Monospace) und **Biomech/Giger** (entsättigt,
+  Knochen-/Asche-Töne mit Säuregrün). Vorschauen in `previews/`.
 - Ausgabe: gerenderte Karte (**PNG**- oder SVG-Download), **Map-String** (kompatibel mit TI4 Map Lab / TTS / keeganw),
   Statistik (Blue/Red, Resources/Influence, Tech, Traits R/G/B, Wormholes) und die Home-Werte.
 
@@ -236,6 +239,7 @@ Die Anzeige unter der Karte prüft alle drei Regeln über die Pillen `Leer` (Dim
 | Design | Stil |
 | --- | --- |
 | `Realistisch` **(Standard)** | eigener Sternenhimmel, Farbverläufe auf den Hexen, **schattierte Planetenkugeln** mit Glanzpunkt und Ringen; **Anomalien, Wormholes und legendaere Planeten als Grafik** (Supernova-Strahlen mit Glut/Puls, Nebelwolken mit Turbulenz, Felsbrocken, rotierender Riss-Schleier, α/β-Vortexe, goldener Stern, Stations-Ring) – prozedural gezeichnet |
+| `Druck (hell)` | **druckfreundlich:** weißer Hintergrund, sehr helle Kachelflächen, **weiße Trennlinien zwischen den Tiles** (deutlich sichtbar auf Papier), dunkle Beschriftung. Zusätzlich blendet `@media print` das Bedienpanel aus |
 | `Classic (dunkel)` | dezentes Dunkelblau/Dunkelgrün/Dunkelbraun (urspruengliche Optik) |
 | `Retro 8-Bit` | kräftige Primärfarben, dicke schwarze Outlines, Scanline-Overlay, Monospace-Schrift |
 | `Biomech (Giger)` | entsättigte Knochen-/Asche-/Rost-Töne, dünne Linien, Säuregrün als Akzent |
@@ -282,12 +286,28 @@ node tools/probe_reach.js
 
 ## Screenshot / Beispielkarte neu erzeugen
 
+Der Screenshot für README und Social-Preview (`og:image`) wird im **realistischen Design** erzeugt:
+
+```bash
+node tools/preview_themes.js     # schreibt u. a. previews/theme-realistic.svg
+python3 tools/make_og.py         # rendert screenshot.png (1200x630) per Chrome headless
+```
+
+`make_og.py` bettet das realistische Karten-SVG, das Logo und die Kurz-Legende in eine
+1200×630-Vorlage ein und rastern sie mit Google Chrome (nötig für SVG-Verläufe, Filter und
+Planetenkugeln). Die Vorlage bleibt als `tools/og.html` im Repo.
+
+Älterer Fallback ohne Chrome (Classic-Optik, nur Pillow):
+
 ```bash
 node tools/export_map.js        # schreibt tools/map.json (Beispielkarte, inkl. Faktionskürzeln)
 python3 tools/make_screenshot.py # rendert screenshot.png (1200x630, Pillow)
 ```
 
 Das Beispiel nutzt den Nachbar-Modus mit sechs Fraktionen; die Fraktionskürzel stehen am Heimatsystem.
+
+Das **Logo** (`logo.svg`) wird als Favicon und in der Titelzeile verwendet; die Byline lautet
+**„by Barci + AI“**.
 
 ## Credits & Lizenz
 

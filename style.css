@@ -8,6 +8,10 @@ html,body{ margin:0; background:var(--bg); color:var(--fg);
 header{ padding:18px 22px 8px; border-bottom:1px solid var(--line); }
 header h1{ margin:0; font-size:22px; letter-spacing:.3px; }
 header .sub{ margin:4px 0 0; color:var(--muted); font-size:13px; }
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand .logo{ flex:0 0 auto; width:46px; height:46px; border-radius:10px; }
+.brandtext{ min-width:0; }
+.byline{ font-size:13px; font-weight:500; color:var(--muted); letter-spacing:.2px; white-space:nowrap; }
 
 main{ display:flex; gap:20px; padding:20px; align-items:flex-start; flex-wrap:wrap; }
 .panel{ background:var(--panel); border:1px solid var(--line); border-radius:10px;
@@ -111,3 +115,26 @@ body[data-theme="realistic"]{
   --fg:#e6eefb; --muted:#8ea3bf; --accent:#3f6fae; --accent2:#9b7f2e; --mapbg:#04070d;
 }
 body[data-theme="realistic"] header{ border-bottom-color:#1d2c42; }
+
+/* Druckfreundlich: heller Seitenhintergrund, weisse Kachelfugen. */
+body[data-theme="print"]{
+  --bg:#ffffff; --panel:#f4f6f9; --panel2:#e9edf3; --line:#b9c2cf;
+  --fg:#111820; --muted:#4a5666; --accent:#2f5486; --accent2:#8a6a12; --mapbg:#ffffff;
+}
+body[data-theme="print"] header{ border-bottom-color:#b9c2cf; }
+body[data-theme="print"] .logo{ box-shadow:0 0 0 1px #b9c2cf; }
+body[data-theme="print"] .pill{ background:#ffffff; }
+body[data-theme="print"] .pill b{ color:#0f172a; }
+body[data-theme="print"] .lg-t b{ color:#0f172a; }
+body[data-theme="print"] .lg-num{ color:#0f172a; }
+body[data-theme="print"] .fan a{ color:#1a4f9c; }
+
+@media print{
+  header, .panel, .stringrow, .hint, .status{ display:none !important; }
+  html,body{ background:#ffffff; color:#000000; }
+  main{ display:block; padding:0; }
+  .output{ min-width:0; }
+  .mapbox{ border:none; padding:0; overflow:visible; }
+  .legend, .stats{ break-inside:avoid; }
+  .legend{ border-color:#b9c2cf; }
+}

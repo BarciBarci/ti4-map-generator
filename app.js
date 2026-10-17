@@ -694,9 +694,19 @@
       techFill:"#0b0f16", techStroke:"#c8d6ea", resinf:"#dbe6f5",
       scanlines:false, realistic:true, textShadow:true,
       swatch:{ home:"#39a05c", rex:"#9b7f2e", blue:"#2f5486", red:"#6e3a32" } },
+    // Druckfreundlich: weisser Hintergrund, sehr helle Hexfelder und WEISSE Trennlinien,
+    // damit die Kachelgrenzen auf Papier klar sichtbar bleiben.
+    print: { label:"Druck (hell)", bg:"#ffffff", panel:"#f4f6f9",
+      blue:"#dbe8fb", red:"#f7e2de", home:"#d9f2df", rex:"#f6ecc4", closed:"#eceff3", warp:"#f2f4f7",
+      stroke:"#ffffff", sw:3, font:"sans-serif",
+      id:"#4a5a70", homeLabel:"#14532d", value:"#0f172a", rexLabel:"#5a4410", warpGlyph:"#b9c2cf",
+      glyph:"#8a6a12", trait:["#c0392b","#27ae60","#2980b9"], traitNone:"#7f8c8d",
+      techFill:"#ffffff", techStroke:"#33415a", resinf:"#1a1a1a", planetStroke:"#33415a",
+      scanlines:false,
+      swatch:{ home:"#d9f2df", rex:"#f6ecc4", blue:"#dbe8fb", red:"#f7e2de" } },
   };
   // Reihenfolge im Design-Dropdown; "realistisch" ist der Standard.
-  const THEME_ORDER = ["realistic","classic","retro","giger"];
+  const THEME_ORDER = ["realistic","print","classic","retro","giger"];
   function currentTheme(){ const sel=($("theme")&&$("theme").value)||"realistic"; return THEMES[sel]?sel:"realistic"; }
   // Design-Einstellung im Browser speichern (uebersteht Reload).
   const THEME_PREF_KEY = "ti4design";
@@ -834,7 +844,7 @@
           const ringed = isReal && (((((pl.name||"").length*7 + pl.resources*13 + pl.influence*5) % 3) === 0));
           const rrx=+(discR*1.95).toFixed(1), rry=+(discR*0.62).toFixed(1);
           if(ringed) content += `<g transform="rotate(-18 ${px} ${py})"><ellipse cx="${px}" cy="${py}" rx="${rrx}" ry="${rry}" fill="none" stroke="url(#gRing)" stroke-width="1.6" opacity="0.5"/></g>`;
-          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${pfill}" stroke="${isReal?"#0a1018":th.stroke}" stroke-width="${(th.sw*0.8).toFixed(2)}"/>`;
+          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${pfill}" stroke="${isReal?"#0a1018":(th.planetStroke||th.stroke)}" stroke-width="${(th.sw*0.8).toFixed(2)}"/>`;
           if(isReal) content += `<circle cx="${(px-discR*0.34).toFixed(1)}" cy="${(py-discR*0.34).toFixed(1)}" r="${(discR*0.30).toFixed(1)}" fill="#ffffff" opacity="0.22"/>`;
           if(ringed) content += `<g transform="rotate(-18 ${px} ${py})"><path d="M ${(px-rrx).toFixed(1)} ${py} A ${rrx} ${rry} 0 0 0 ${(px+rrx).toFixed(1)} ${py}" fill="none" stroke="url(#gRing)" stroke-width="1.6" opacity="0.85"/></g>`;
           if(pl.tech_specialties && pl.tech_specialties.length){
