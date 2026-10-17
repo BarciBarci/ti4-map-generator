@@ -14,6 +14,166 @@
   const ANOM_LABEL = {}; ANOM_LABEL[ANOMALIES.SUPERNOVA]="SN"; ANOM_LABEL[ANOMALIES.NEBULA]="NEB";
   ANOM_LABEL[ANOMALIES.ASTEROID_FIELD]="AST"; ANOM_LABEL[ANOMALIES.GRAVITY_RIFT]="GR"; ANOM_LABEL[ANOMALIES.ENTROPIC_SCAR]="ES";
 
+  // ---- Zweisprachige Oberfläche (Deutsch/Englisch) ----
+  // Statische Texte stehen in index.html mit data-i18n*; dynamische Texte laufen über tr().
+  const I18N = {
+    de: {
+      docTitle: "TI4 Balanced Map Generator – by Barci + AI",
+      sub: "Ausgeglichene Karten für 3–6 Spieler · Layouts & Tile-Daten aus dem TI4 Map Lab",
+      players: "Spieler", layoutLabel: "Layout", extensions: "Erweiterungen (Tile-Vorrat)",
+      extBase: "Grundspiel", ratioLabel: "Blau-Anteil",
+      whPair: "Wormholes paarweise (je Typ mindestens 2)",
+      whAlways: "Immer aktiv: <b>höchstens 1 Wormhole pro Spieler-Slice</b> und <b>kein Wormhole direkt am Heimsystem</b>.",
+      factionsLabel: "Faktionen berücksichtigen",
+      contestFeature: "Merkmal möglichst auch für Nachbarn erreichbar",
+      contestHint: "(nur mit Faktionen)",
+      factionsNote: "Sichert je Fraktion das vorteilhafte Merkmal <b>in Reichweite</b> (≤2 Felder): Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole.<br>Die Option „für Nachbarn erreichbar“ legt es möglichst in die umkämpfte Randzone: eigenes + beide Nachbarn, sonst eigenes + ein Nachbar (die erreichte Stufe steht unter der Karte). Eine Fraktion ist nur einmal wählbar. Discordant-Stars-Fraktionen sind nicht enthalten.",
+      genBtn: "Karte generieren", improveBtn: "Balance verbessern", pngBtn: "Als PNG speichern",
+      designLabel: "Design", evaluatorLabel: "Evaluator (Bewertung)",
+      detailsSummary: "Was passiert beim „Karte generieren“?",
+      step1: "Tile-Vorrat ziehen (Blau/Rot-Ziel, Wormholes paarweise).",
+      step2: "Wiederholt: Zufallskarte → Optimierung über <b>alle fünf</b> Bewertungen (Simple Slice, Joebrew, Resource-, Influence- und Tech-Access) → Bank-Tausche, dazwischen „Kicks“.",
+      step3: "Ist noch etwas einseitig, wird die Karte mit frischem Tile-Vorrat <b>neu generiert</b>.",
+      step4: "Abbruch, sobald keine Bewertung mehr über 2&nbsp;% liegt (Dauer grob 4–10&nbsp;s).",
+      detailsP1: "Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und Wormhole-Paare bleiben dabei immer erhalten. Das Ergebnis steht unter der Karte als <b>Gap</b> je Bewertung und als <b>Einseitig</b>.",
+      detailsP2: "Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte Merkmal ins eigene Gebiet gelegt (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert. Mit <b>„für Nachbarn erreichbar“</b> wird es möglichst auf ein Feld gelegt, das auch die Nachbarn erreichen (umkämpfte Randzone).",
+      mapPlaceholder: "Map-String erscheint hier", copyBtn: "Kopieren",
+      hint: "Map-String: Feld „Map String“ im TI4 Map Lab → „Load From String“. Identisches Format (36/60 Zahlen, <code>0</code> = leer, Mecatol nicht enthalten).",
+      footer: "<strong>Nicht-kommerzielles Fan-Projekt.</strong> Layouts, Tile- und Evaluator-Daten stammen aus dem <a href='https://github.com/joepinion/ti4-map-lab' target='_blank' rel='noopener'>TI4 Map Lab</a> von Joseph Arthur Ellis (Lizenz <a href='https://creativecommons.org/licenses/by-sa/4.0/' target='_blank' rel='noopener'>CC BY-SA 4.0</a>). „Twilight Imperium“ ist ein Markenzeichen von Fantasy Flight Games / Asmodee. Kein offizielles Produkt, keine Verbindung zu FFG/Asmodee.",
+
+      player: "Spieler",
+      statBlueRed: "Blau/Rot", statResInf: "Res/Inf", statTech: "Tech", statTraits: "Merkmale R/G/B",
+      statWormholes: "Wormholes", statWhSlice: "Wormhole ≤1/Slice", statWhHome: "Wormhole am Home",
+      none: "keins", yes: "ja", maxGap: "Max Gap", oneSided: "Einseitig", noOneSided: "keine",
+      reachBoth: "+2 Nachbarn", reachNear: "+Nachbar", reachOwn: "nur eigenes", reachMissing: "fehlt",
+      factOpen: "Faktionsbedarf offen: {list}.",
+      factOk: "Faktionsbedarf erfüllt: {list}.",
+      optRest: "Volloptimiert über alle {n} Bewertungen – Rest: {rest}.",
+      optOk: "Volloptimiert: alle {n} Bewertungen ausgeglichen (max. Gap {pct}%).",
+      ready: "Bereit. „Karte generieren“ klicken.",
+      calc: "Berechne & optimiere über alle Bewertungen …",
+      improving: "Optimiere über alle Bewertungen …",
+      noPool: "Kein Tile-Vorrat (Erweiterung wählen).",
+      missingTiles: "Tile-Vorrat enthält nicht: {list}. Passende Erweiterung anhaken (Anomalien sind im Grundspiel enthalten).",
+      contestFail: "Dieses Layout hat für {factions} keine gemeinsame Randzone mit den Nachbarn. Bitte „für Nachbarn erreichbar“ ausschalten oder ein anderes Layout wählen.",
+      tooFewTiles: "Zu wenige Tiles ({have}/{need}). Mehr Erweiterungen anhaken.",
+      noMap: "Keine legale Karte gefunden – nochmal versuchen.",
+      error: "Fehler: {msg}",
+      generateFirst: "Erst generieren.",
+      pngSaved: "PNG gespeichert.", pngError: "PNG-Export fehlgeschlagen.",
+      copied: "Map-String kopiert.",
+      missingWormhole: "Wormhole (mind. 2 gleiche)",
+
+      themeRealistic: "Realistisch", themePrint: "Druck (hell)", themeClassic: "Classic (dunkel)",
+      themeRetro: "Retro 8-Bit", themeGiger: "Biomech (Giger)",
+      evalEmpty: "Leere Felder", shortRes: "Res", shortInf: "Inf", shortTech: "Tech", shortEmpty: "Leer",
+
+      anomSN: "Supernova", anomNEB: "Nebel", anomAST: "Asteroidenfeld",
+      anomGR: "Gravitationsriss", anomES: "Entropic Scar", featWormhole: "α/β-Wormhole",
+
+      lgTech: "Tech-Spezialisierung:",
+      lgResInf: "Zahl am Planeten (<b>3/1</b>) = Ressourcen&nbsp;/&nbsp;Influence",
+      lgPlanetType: "Planetentyp:", lgAnomalies: "Anomalien:",
+      lgWormhole: "Wormhole (je Typ 0 oder ≥2; max. 1 je Slice; keins am Home):",
+      lgLegendary: "legendärer Planet", lgStation: "Raumstation", lgWarp: "Warprand (leer)",
+      lgTileNum: "Tile-Nummer (System)", lgFields: "Felder:",
+      lgBlue: "besiedelbar (blau)", lgRed: "leer/Anomalie (rot)",
+    },
+    en: {
+      docTitle: "TI4 Balanced Map Generator – by Barci + AI",
+      sub: "Balanced maps for 3–6 players · layouts & tile data from the TI4 Map Lab",
+      players: "Players", layoutLabel: "Layout", extensions: "Expansions (tile pool)",
+      extBase: "Base game", ratioLabel: "Blue ratio",
+      whPair: "Wormholes in pairs (at least 2 of each type)",
+      whAlways: "Always active: <b>at most 1 wormhole per player slice</b> and <b>no wormhole directly at a home system</b>.",
+      factionsLabel: "Consider factions",
+      contestFeature: "Feature reachable for neighbours if possible",
+      contestHint: "(factions only)",
+      factionsNote: "Secures each faction's beneficial feature <b>within reach</b> (≤2 tiles): Muaat→supernova, Saar→asteroid field, Empyrean→nebula, Vuil'raith→gravity rift, Creuss→α/β wormhole.<br>The option “reachable for neighbours” places it in the contested border zone if possible: own + both neighbours, otherwise own + one neighbour (the achieved level is shown below the map). Each faction can be selected only once. Discordant Stars factions are not included.",
+      genBtn: "Generate map", improveBtn: "Improve balance", pngBtn: "Save as PNG",
+      designLabel: "Design", evaluatorLabel: "Evaluator (score)",
+      detailsSummary: "What happens when you click “Generate map”?",
+      step1: "Draw a tile pool (blue/red target, wormholes in pairs).",
+      step2: "Repeat: random map → optimisation across <b>all five</b> evaluations (Simple Slice, Joebrew, Resource, Influence and Tech Access) → bank swaps, with “kicks” in between.",
+      step3: "If anything is still one-sided, the map is <b>regenerated</b> with a fresh tile pool.",
+      step4: "Stop as soon as no evaluation is above 2&nbsp;% (typically 4–10&nbsp;s).",
+      detailsP1: "Legal placement (no two anomalies or identical wormholes adjacent) and wormhole pairs are always preserved. The result below the map shows the <b>gap</b> per evaluation and any <b>one-sided</b> result.",
+      detailsP2: "With <b>“Consider factions”</b>, each faction's beneficial feature is also placed in its own area (Muaat→supernova, Saar→asteroid field, Empyrean→nebula, Vuil'raith→gravity rift, Creuss→α/β wormhole) and fixed during optimisation. With <b>“reachable for neighbours”</b>, it is placed on a tile the neighbours can reach as well (contested border zone).",
+      mapPlaceholder: "Map string appears here", copyBtn: "Copy",
+      hint: "Map string: “Map String” field in TI4 Map Lab → “Load From String”. Same format (36/60 numbers, <code>0</code> = empty, Mecatol not included).",
+      footer: "<strong>Non-commercial fan project.</strong> Layouts, tile and evaluator data come from the <a href='https://github.com/joepinion/ti4-map-lab' target='_blank' rel='noopener'>TI4 Map Lab</a> by Joseph Arthur Ellis (licensed <a href='https://creativecommons.org/licenses/by-sa/4.0/' target='_blank' rel='noopener'>CC BY-SA 4.0</a>). “Twilight Imperium” is a trademark of Fantasy Flight Games / Asmodee. Not an official product, not affiliated with FFG/Asmodee.",
+
+      player: "Player",
+      statBlueRed: "Blue/Red", statResInf: "Res/Inf", statTech: "Tech", statTraits: "Traits R/G/B",
+      statWormholes: "Wormholes", statWhSlice: "Wormhole ≤1/slice", statWhHome: "Wormhole at home",
+      none: "none", yes: "yes", maxGap: "Max gap", oneSided: "One-sided", noOneSided: "none",
+      reachBoth: "+2 neighbours", reachNear: "+neighbour", reachOwn: "own only", reachMissing: "missing",
+      factOpen: "Faction needs open: {list}.",
+      factOk: "Faction needs met: {list}.",
+      optRest: "Fully optimised across all {n} evaluations – remaining: {rest}.",
+      optOk: "Fully optimised: all {n} evaluations balanced (max gap {pct}%).",
+      ready: "Ready. Click “Generate map”.",
+      calc: "Computing & optimising across all evaluations …",
+      improving: "Optimising across all evaluations …",
+      noPool: "No tile pool (select an expansion).",
+      missingTiles: "Tile pool is missing: {list}. Enable the matching expansion (anomalies are in the base game).",
+      contestFail: "This layout has no shared border zone with the neighbours for {factions}. Turn off “reachable for neighbours” or choose another layout.",
+      tooFewTiles: "Too few tiles ({have}/{need}). Enable more expansions.",
+      noMap: "No legal map found – please try again.",
+      error: "Error: {msg}",
+      generateFirst: "Generate a map first.",
+      pngSaved: "PNG saved.", pngError: "PNG export failed.",
+      copied: "Map string copied.",
+      missingWormhole: "Wormhole (at least 2 of the same type)",
+
+      themeRealistic: "Realistic", themePrint: "Print (light)", themeClassic: "Classic (dark)",
+      themeRetro: "Retro 8-Bit", themeGiger: "Biomech (Giger)",
+      evalEmpty: "Empty Fields", shortRes: "Res", shortInf: "Inf", shortTech: "Tech", shortEmpty: "Empty",
+
+      anomSN: "Supernova", anomNEB: "Nebula", anomAST: "Asteroid Field",
+      anomGR: "Gravity Rift", anomES: "Entropic Scar", featWormhole: "α/β wormhole",
+
+      lgTech: "Tech specialty:",
+      lgResInf: "Number on planet (<b>3/1</b>) = resources&nbsp;/&nbsp;influence",
+      lgPlanetType: "Planet type:", lgAnomalies: "Anomalies:",
+      lgWormhole: "Wormhole (0 or ≥2 per type; max 1 per slice; none at home):",
+      lgLegendary: "legendary planet", lgStation: "space station", lgWarp: "warp edge (empty)",
+      lgTileNum: "Tile number (system)", lgFields: "Tiles:",
+      lgBlue: "colonisable (blue)", lgRed: "empty/anomaly (red)",
+    },
+  };
+  const LANG_PREF_KEY = "ti4lang";
+  let LANG = (function(){
+    try{ if(typeof localStorage==="undefined") return "de";
+      return localStorage.getItem(LANG_PREF_KEY)==="en" ? "en" : "de"; }
+    catch(e){ return "de"; }
+  })();
+  function currentLang(){ return LANG; }
+  function tr(key, vars){
+    const table=I18N[LANG] || I18N.de;
+    let s=(table[key]!=null) ? table[key] : I18N.de[key];
+    if(s==null) s=key;
+    if(vars) s=s.replace(/\{(\w+)\}/g, function(m,k){ return vars[k]!=null ? vars[k] : m; });
+    return s;
+  }
+  function setLang(l){
+    LANG = (l==="en") ? "en" : "de";
+    try{ if(typeof localStorage!=="undefined") localStorage.setItem(LANG_PREF_KEY,LANG); }catch(e){}
+    applyLang();
+  }
+  function anomName(acr){
+    const m={ SN:"anomSN", NEB:"anomNEB", AST:"anomAST", GR:"anomGR", ES:"anomES" };
+    return tr(m[acr] || acr);
+  }
+  function featureLabel(v){
+    if(v===ANOMALIES.SUPERNOVA) return tr("anomSN");
+    if(v===ANOMALIES.ASTEROID_FIELD) return tr("anomAST");
+    if(v===ANOMALIES.NEBULA) return tr("anomNEB");
+    if(v===ANOMALIES.GRAVITY_RIFT) return tr("anomGR");
+    if(v===ANOMALIES.ENTROPIC_SCAR) return tr("anomES");
+    return "?";
+  }
+
   const LAYOUTS = {
     3: ["3-Player Standard", "3-Player Settlers", "3-Player Warp"],
     4: ["4-Player Standard", "4-Player Skinny", "4-Player Warp"],
@@ -52,10 +212,6 @@
   FACTION_ANOMALY["The Empyrean"]         = ANOMALIES.NEBULA;
   FACTION_ANOMALY["The Vuil'raith Cabal"] = ANOMALIES.GRAVITY_RIFT;
   const FACTION_WORMHOLE = { "The Ghosts of Creuss": true };
-  const FEATURE_LABEL = {};
-  FEATURE_LABEL[ANOMALIES.SUPERNOVA]="Supernova"; FEATURE_LABEL[ANOMALIES.ASTEROID_FIELD]="Asteroidenfeld";
-  FEATURE_LABEL[ANOMALIES.NEBULA]="Nebel"; FEATURE_LABEL[ANOMALIES.GRAVITY_RIFT]="Gravitationsriss";
-  FEATURE_LABEL[ANOMALIES.ENTROPIC_SCAR]="Entropic Scar";
 
   function factionNeed(name){
     if(!name) return null;
@@ -63,7 +219,7 @@
     if(FACTION_WORMHOLE[name]) return { kind:"wormhole" };
     return null;
   }
-  function needLabel(f){ return f.kind==="wormhole" ? "α/β-Wormhole" : (FEATURE_LABEL[f.value]||"?"); }
+  function needLabel(f){ return f.kind==="wormhole" ? tr("featWormhole") : featureLabel(f.value); }
   function hasFeature(sys, f){
     if(!sys) return false;
     if(f.kind==="wormhole") return sys.wormhole!==null && sys.wormhole!==WORMHOLES.DELTA;
@@ -78,7 +234,7 @@
       if(f.kind==="wormhole"){
         // Es braucht ein vollstaendiges Paar (>=2) eines Typs.
         const ok=wormholeTypes(pool).some(T=>pool.filter(x=>x.wormhole===T).length>=2);
-        if(!ok && miss.indexOf("Wormhole (mind. 2 gleiche)")<0) miss.push("Wormhole (mind. 2 gleiche)");
+        if(!ok && miss.indexOf(tr("missingWormhole"))<0) miss.push(tr("missingWormhole"));
         continue;
       }
       if(!pool.some(s=>hasFeature(s,f))){ const l=needLabel(f); if(miss.indexOf(l)<0) miss.push(l); }
@@ -93,7 +249,7 @@
       const idx=st.homes.indexOf(r.home);
       const hit=list=>(list||[]).some(p=>place[p] && hasFeature(place[p], r.feature));
       const reach = hit(r.positionsBoth) ? "both" : (hit(r.positionsNear) ? "near" : (hit(r.positions) ? "own" : null));
-      return { name:(st.factionNames&&st.factionNames[idx])||("Spieler "+(idx+1)), feature:r.featureKey, ok:!!reach, reach:reach };
+      return { name:(st.factionNames&&st.factionNames[idx])||(tr("player")+" "+(idx+1)), feature:needLabel(r.feature), ok:!!reach, reach:reach };
     });
   }
 
@@ -937,14 +1093,21 @@
     LAYOUTS[p].forEach(t=>{ const o=document.createElement("option"); o.value=t; o.textContent=t; sel.appendChild(o); });
   }
   function fillEvaluators(){
-    const sel=$("evaluator"); sel.innerHTML="";
-    default_evaluators.forEach((e,i)=>{ const o=document.createElement("option"); o.value=String(i); o.textContent=e.title; sel.appendChild(o); });
-    sel.value=String(IDX_JOE);   // Anzeige standardmäßig Joebrew (Pipeline endet auf Joebrew)
+    const sel=$("evaluator"); if(!sel) return;
+    const prev=sel.value; sel.innerHTML="";
+    default_evaluators.forEach((e,i)=>{ const o=document.createElement("option"); o.value=String(i);
+      o.textContent=(e.title==="Leere Felder"||e.title==="Empty Fields") ? tr("evalEmpty") : e.title; sel.appendChild(o); });
+    sel.value=(prev!=="" && prev!=null && +prev<default_evaluators.length) ? prev : String(IDX_JOE);
+  }
+  function themeLabel(k){
+    const m={ realistic:"themeRealistic", print:"themePrint", classic:"themeClassic", retro:"themeRetro", giger:"themeGiger" };
+    return tr(m[k]||k);
   }
   function fillThemes(){
     const sel=$("theme"); if(!sel) return; sel.innerHTML="";
-    THEME_ORDER.filter(kk=>THEMES[kk]).forEach(kk=>{ const o=document.createElement("option"); o.value=kk; o.textContent=THEMES[kk].label; sel.appendChild(o); });
-    sel.value = loadThemePref() || "realistic";
+    const prev=sel.value;
+    THEME_ORDER.filter(kk=>THEMES[kk]).forEach(kk=>{ const o=document.createElement("option"); o.value=kk; o.textContent=themeLabel(kk); sel.appendChild(o); });
+    sel.value=(prev && THEMES[prev]) ? prev : (loadThemePref() || "realistic");
   }
   function setStatus(t){ $("status").textContent=t; }
 
@@ -960,7 +1123,7 @@
     if($("useFactions").checked){
       for(let i=0;i<n;i++){
         const row=document.createElement("div"); row.className="frow";
-        const lab=document.createElement("span"); lab.textContent="Spieler "+(i+1); row.appendChild(lab);
+        const lab=document.createElement("span"); lab.textContent=tr("player")+" "+(i+1); row.appendChild(lab);
         const sel=document.createElement("select"); sel.className="fsel";
         const none=document.createElement("option"); none.value=""; none.textContent="—"; sel.appendChild(none);
         for(const f of enabledFactions()){ const o=document.createElement("option"); o.value=f.name; o.textContent=f.name+(factionNeed(f.name)?" *":""); sel.appendChild(o); }
@@ -1002,8 +1165,13 @@
   }
 
   function shortName(t){
-    return t==="Simple Slice"?"Slice":t==="Joebrew"?"Joebrew":t==="Resource Access"?"Res":
-           t==="Influence Access"?"Inf":t==="Tech Access"?"Tech":t==="Leere Felder"?"Leer":t;
+    if(t==="Simple Slice") return "Slice";
+    if(t==="Joebrew") return "Joebrew";
+    if(t==="Resource Access") return tr("shortRes");
+    if(t==="Influence Access") return tr("shortInf");
+    if(t==="Tech Access") return tr("shortTech");
+    if(t==="Leere Felder" || t==="Empty Fields") return tr("shortEmpty");
+    return t;
   }
   function shortFaction(n){
     if(!n) return "";
@@ -1016,7 +1184,6 @@
   const TECH_DE = {}; TECH_DE[TECH_LETTER[TECH_SPECIALTIES.WARFARE]]="Warfare";
   TECH_DE[TECH_LETTER[TECH_SPECIALTIES.PROPULSION]]="Propulsion";
   TECH_DE[TECH_LETTER[TECH_SPECIALTIES.BIOTIC]]="Biotic"; TECH_DE[TECH_LETTER[TECH_SPECIALTIES.CYBERNETIC]]="Cybernetic";
-  const ANOM_DE = { SN:"Supernova", NEB:"Nebel", AST:"Asteroidenfeld", GR:"Gravitationsriss", ES:"Entropic Scar" };
   const ANOM_ORDER = ["SN","GR","NEB","AST","ES"];
 
   function legendHTML(){
@@ -1036,19 +1203,46 @@
     const acrList=ANOM_ORDER.filter(a=>acrSet[a]).concat(Object.keys(acrSet).filter(a=>ANOM_ORDER.indexOf(a)<0));
 
     return [
-      item(`<span class="lg-t">Tech-Spezialisierung:</span>`, tech.map(t=>pair(badge(t[0]),t[1])).join("")),
-      item(`<span class="lg-t">Zahl am Planeten (<b>3/1</b>) = Ressourcen&nbsp;/&nbsp;Influence</span>`),
-      item(`<span class="lg-t">Planetentyp:</span>`,
+      item(`<span class="lg-t">${tr("lgTech")}</span>`, tech.map(t=>pair(badge(t[0]),t[1])).join("")),
+      item(`<span class="lg-t">${tr("lgResInf")}</span>`),
+      item(`<span class="lg-t">${tr("lgPlanetType")}</span>`,
         pair(sw(th.trait[0]),"Hazardous")+pair(sw(th.trait[1]),"Industrial")+pair(sw(th.trait[2]),"Cultural")),
-      item(`<span class="lg-t">Anomalien:</span>`, acrList.map(a=>pair(gly(a), ANOM_DE[a]||a)).join("")),
-      item(`<span class="lg-t">Wormhole (je Typ 0 oder ≥2; max. 1 je Slice; keins am Home):</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
-      item(pair(gly("★"),"legendärer Planet")+pair(gly("⌂"),"Raumstation")+pair(gly("◇"),"Warprand (leer)")),
-      item(pair(`<span class="lg-num">110</span>`,"Tile-Nummer (System)")),
-      item(`<span class="lg-t">Felder:</span>`,
-        pair(sw(swc("home")),"HOME")+pair(sw(swc("rex")),"Mecatol Rex")+pair(sw(swc("blue")),"besiedelbar (blau)")+pair(sw(swc("red")),"leer/Anomalie (rot)")),
+      item(`<span class="lg-t">${tr("lgAnomalies")}</span>`, acrList.map(a=>pair(gly(a), anomName(a))).join("")),
+      item(`<span class="lg-t">${tr("lgWormhole")}</span>`, pair(gly("α"),"Alpha")+pair(gly("β"),"Beta")),
+      item(pair(gly("★"),tr("lgLegendary"))+pair(gly("⌂"),tr("lgStation"))+pair(gly("◇"),tr("lgWarp"))),
+      item(pair(`<span class="lg-num">110</span>`,tr("lgTileNum"))),
+      item(`<span class="lg-t">${tr("lgFields")}</span>`,
+        pair(sw(swc("home")),"HOME")+pair(sw(swc("rex")),"Mecatol Rex")+pair(sw(swc("blue")),tr("lgBlue"))+pair(sw(swc("red")),tr("lgRed"))),
     ].join("");
   }
   function renderLegend(){ const el=$("legend"); if(el) el.innerHTML=legendHTML(); }
+
+  // Wendet die gewaehlte Sprache auf statische (data-i18n*) und dynamische Texte an.
+  function applyLang(){
+    if(typeof document === "undefined") return;
+    try{
+      if(document.documentElement) document.documentElement.setAttribute("lang", LANG);
+      document.title = tr("docTitle");
+      if(document.querySelectorAll){
+        Array.prototype.forEach.call(document.querySelectorAll("[data-i18n]"), function(el){
+          el.textContent = tr(el.getAttribute("data-i18n"));
+        });
+        Array.prototype.forEach.call(document.querySelectorAll("[data-i18n-html]"), function(el){
+          el.innerHTML = tr(el.getAttribute("data-i18n-html"));
+        });
+        Array.prototype.forEach.call(document.querySelectorAll("[data-i18n-placeholder]"), function(el){
+          el.setAttribute("placeholder", tr(el.getAttribute("data-i18n-placeholder")));
+        });
+        Array.prototype.forEach.call(document.querySelectorAll(".lang button[data-lang]"), function(b){
+          const on = b.getAttribute("data-lang")===LANG;
+          if(b.classList) b.classList.toggle("active", on);
+          b.setAttribute("aria-pressed", on?"true":"false");
+        });
+      }
+    }catch(e){ /* reine Anzeige – Fehler duerfen die App nicht stoppen */ }
+    fillThemes(); fillEvaluators(); fillFactions();
+    if(cur) paint(); else { renderLegend(); setStatus(tr("ready")); }
+  }
 
   function paint(){
     const st=cur.st, place=cur.place, prep=cur.prep, s=stats(st,place);
@@ -1062,27 +1256,27 @@
     renderLegend();
     $("mapstring").value=mapString(st,place);
     let pills =
-      `<span class="pill">Blue/Red <b>${s.blue}/${s.red}</b></span>`+
-      `<span class="pill">Res/Inf <b>${s.res}/${s.inf}</b></span>`+
-      `<span class="pill">Tech <b>${s.tech||"-"}</b></span>`+
-      `<span class="pill">Traits R/G/B <b>${s.traits}</b></span>`+
-      `<span class="pill ${s.whOk?"good":"bad"}">Wormholes <b>${s.wh}</b></span>`+
-      `<span class="pill ${s.whSliceOk?"good":"bad"}">Wormhole ≤1/Slice <b>${s.whSliceOk?"✓":"✗"}</b></span>`+
-      `<span class="pill ${s.whHomeOk?"good":"bad"}">Wormhole am Home <b>${s.whHomeOk?"keins":"ja"}</b></span>`;
+      `<span class="pill">${tr("statBlueRed")} <b>${s.blue}/${s.red}</b></span>`+
+      `<span class="pill">${tr("statResInf")} <b>${s.res}/${s.inf}</b></span>`+
+      `<span class="pill">${tr("statTech")} <b>${s.tech||"-"}</b></span>`+
+      `<span class="pill">${tr("statTraits")} <b>${s.traits}</b></span>`+
+      `<span class="pill ${s.whOk?"good":"bad"}">${tr("statWormholes")} <b>${s.wh}</b></span>`+
+      `<span class="pill ${s.whSliceOk?"good":"bad"}">${tr("statWhSlice")} <b>${s.whSliceOk?"✓":"✗"}</b></span>`+
+      `<span class="pill ${s.whHomeOk?"good":"bad"}">${tr("statWhHome")} <b>${s.whHomeOk?tr("none"):tr("yes")}</b></span>`;
     prep.forEach(function(E,i){ const g=gaps[i];
       pills += `<span class="pill ${rel[i]===0?"good":(rel[i]<=0.02?"warn":"bad")}">Gap ${shortName(E.name)} <b>${g}</b></span>`; });
-    pills += `<span class="pill ${maxRel<=0.02?"good":"warn"}">Max Gap <b>${(maxRel*100).toFixed(1)}%</b></span>`;
+    pills += `<span class="pill ${maxRel<=0.02?"good":"warn"}">${tr("maxGap")} <b>${(maxRel*100).toFixed(1)}%</b></span>`;
     const side=oneSided(rel, prep, 0.02);
-    pills += `<span class="pill ${side.length?"warn":"good"}">Einseitig <b>${side.length?side.join(", "):"keine"}</b></span>`;
+    pills += `<span class="pill ${side.length?"warn":"good"}">${tr("oneSided")} <b>${side.length?side.join(", "):tr("noOneSided")}</b></span>`;
     const frep=featureReport(st, place);
-    const reachLabel=r=>r.reach==="both"?"+2 Nachbarn":r.reach==="near"?"+Nachbar":r.reach==="own"?"nur eigenes":"fehlt";
+    const reachLabel=r=>r.reach==="both"?tr("reachBoth"):r.reach==="near"?tr("reachNear"):r.reach==="own"?tr("reachOwn"):tr("reachMissing");
     frep.forEach(r=>{ pills += `<span class="pill ${r.ok?"good":"bad"}">${shortFaction(r.name)}: ${r.feature} <b>${reachLabel(r)}</b></span>`; });
     $("stats").innerHTML = pills;
     const fbad=frep.filter(r=>!r.ok);
     setStatus((side.length
-      ? `Volloptimiert über alle ${prep.length} Bewertungen – Rest: ${side.join(", ")}.`
-      : `Volloptimiert: alle ${prep.length} Bewertungen ausgeglichen (max. Gap ${(maxRel*100).toFixed(1)}%).`)
-      + (frep.length ? (fbad.length ? ` Faktionsbedarf offen: ${fbad.map(r=>shortFaction(r.name)+" ("+r.feature+")").join(", ")}.` : ` Faktionsbedarf erfüllt: ${frep.map(r=>shortFaction(r.name)+"→"+r.feature+" ("+reachLabel(r)+")").join(", ")}.`) : "")
+      ? tr("optRest",{n:prep.length,rest:side.join(", ")})
+      : tr("optOk",{n:prep.length,pct:(maxRel*100).toFixed(1)}))
+      + (frep.length ? (fbad.length ? " "+tr("factOpen",{list:fbad.map(r=>shortFaction(r.name)+" ("+r.feature+")").join(", ")}) : " "+tr("factOk",{list:frep.map(r=>shortFaction(r.name)+"→"+r.feature+" ("+reachLabel(r)+")").join(", ")})) : "")
       + ` Home-Werte (${prep[selIdx].name}): ${vals.join(" / ")}`);
   }
 
@@ -1121,11 +1315,11 @@
   function generate(){
     const title=$("layout").value;
     const pool=buildPool($("base").checked,$("pok").checked,$("te").checked);
-    if(!pool.length){ setStatus("Kein Tile-Vorrat (Erweiterung wählen)."); return; }
+    if(!pool.length){ setStatus(tr("noPool")); return; }
     const factions=readFactions();
     const miss=missingFeatures(pool, factions);
-    if(miss.length){ setStatus("Tile-Vorrat enthält nicht: "+miss.join(", ")+". Passende Erweiterung anhaken (Anomalien sind im Grundspiel enthalten)."); return; }
-    setStatus("Berechne & optimiere über alle Bewertungen …"); $("generate").disabled=true;
+    if(miss.length){ setStatus(tr("missingTiles",{list:miss.join(", ")})); return; }
+    setStatus(tr("calc")); $("generate").disabled=true;
     setTimeout(()=>{
       try{
         const rng=mulberry32((Math.random()*1e9)|0);
@@ -1137,23 +1331,23 @@
         const cbc=$("contestFeature");
         const contest = !!(cbc && cbc.checked && !cbc.disabled);
         const r=generateRounds(title, pool, ratio, needWh, rng, total, 0.02, 4, factions, contest);
-        if(r && r.error==="contest"){ setStatus("Dieses Layout hat für "+r.factions.join(", ")+" keine gemeinsame Randzone mit den Nachbarn. Bitte „für Nachbarn erreichbar“ ausschalten oder ein anderes Layout wählen."); $("generate").disabled=false; return; }
-        if(r && r.error){ setStatus(`Zu wenige Tiles (${r.have}/${r.need}). Mehr Erweiterungen anhaken.`); $("generate").disabled=false; return; }
-        if(!r){ setStatus("Keine legale Karte gefunden – nochmal versuchen."); $("generate").disabled=false; return; }
+        if(r && r.error==="contest"){ setStatus(tr("contestFail",{factions:r.factions.join(", ")})); $("generate").disabled=false; return; }
+        if(r && r.error){ setStatus(tr("tooFewTiles",{have:r.have,need:r.need})); $("generate").disabled=false; return; }
+        if(!r){ setStatus(tr("noMap")); $("generate").disabled=false; return; }
         cur={ st:r.st, place:r.res.place, prep:r.prep, gaps:r.res.gaps };
         paint();
-      } catch(e){ setStatus("Fehler: "+e.message); console.error(e); }
+      } catch(e){ setStatus(tr("error",{msg:e.message})); console.error(e); }
       $("generate").disabled=false;
     },20);
   }
 
   function improve(){
     if(!cur) return;
-    setStatus("Optimiere über alle Bewertungen …"); $("improve").disabled=true;
+    setStatus(tr("improving")); $("improve").disabled=true;
     setTimeout(()=>{
       try{ hillClimbAll(cur.st, cur.place, cur.prep, performance.now()+1500);
            bankClimb(cur.st, cur.place, cur.prep, performance.now()+1200); paint(); }
-      catch(e){ setStatus("Fehler: "+e.message); }
+      catch(e){ setStatus(tr("error",{msg:e.message})); }
       $("improve").disabled=false;
     },20);
   }
@@ -1170,7 +1364,7 @@
   }
 
   function downloadPNG(){
-    if(!cur){ setStatus("Erst generieren."); return; }
+    if(!cur){ setStatus(tr("generateFirst")); return; }
     const svg=$("map").innerHTML;
     const img=new Image();
     const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
@@ -1182,9 +1376,9 @@
       ctx.drawImage(img,0,0,c.width,c.height);
       URL.revokeObjectURL(url);
       const a=document.createElement("a"); a.href=c.toDataURL("image/png"); a.download="ti4-map.png"; a.click();
-      setStatus("PNG gespeichert.");
+      setStatus(tr("pngSaved"));
     };
-    img.onerror=()=>setStatus("PNG-Export fehlgeschlagen.");
+    img.onerror=()=>setStatus(tr("pngError"));
     img.src=url;
   }
 
@@ -1195,14 +1389,19 @@
   $("generate").addEventListener("click", generate);
   $("improve").addEventListener("click", improve);
   $("png").addEventListener("click", downloadPNG);
-  $("copy").addEventListener("click", ()=>{ const el=$("mapstring"); el.select(); navigator.clipboard.writeText(el.value); setStatus("Map-String kopiert."); });
+  $("copy").addEventListener("click", ()=>{ const el=$("mapstring"); el.select(); navigator.clipboard.writeText(el.value); setStatus(tr("copied")); });
   if($("useFactions")) $("useFactions").addEventListener("change", fillFactions);
   ["base","pok","te"].forEach(id=>{ if($(id)) $(id).addEventListener("change", fillFactions); });
+  (function bindLang(){
+    if(typeof document === "undefined" || !document.querySelectorAll) return;
+    Array.prototype.forEach.call(document.querySelectorAll(".lang button[data-lang]"), function(b){
+      b.addEventListener("click", function(){ setLang(b.getAttribute("data-lang")); });
+    });
+  })();
 
-  fillLayouts(); fillEvaluators(); fillFactions(); fillThemes();
+  fillLayouts(); applyLang();
   if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
   renderLegend();
-  setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, THEME_ORDER, shortFaction, legendHTML, loadThemePref, saveThemePref }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, THEME_ORDER, shortFaction, legendHTML, loadThemePref, saveThemePref, tr, setLang, currentLang, applyLang }; }
 })();

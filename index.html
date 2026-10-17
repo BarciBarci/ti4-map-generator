@@ -29,15 +29,19 @@
     <img class="logo" src="logo.svg" width="46" height="46" alt="">
     <div class="brandtext">
       <h1>TI4 Balanced Map Generator <span class="byline">by Barci + AI</span></h1>
-      <p class="sub">Ausgeglichene Karten für 3–6 Spieler · Layouts &amp; Tile-Daten aus dem TI4 Map Lab</p>
+      <p class="sub" data-i18n="sub">Ausgeglichene Karten für 3–6 Spieler · Layouts &amp; Tile-Daten aus dem TI4 Map Lab</p>
     </div>
+  </div>
+  <div class="lang" role="group" aria-label="Sprache / Language">
+    <button type="button" data-lang="de" class="active" aria-pressed="true">DE</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
   </div>
 </header>
 
 <main>
   <section class="panel">
     <div class="field">
-      <label for="players">Spieler</label>
+      <label for="players" data-i18n="players">Spieler</label>
       <select id="players">
         <option value="3">3</option>
         <option value="4">4</option>
@@ -47,32 +51,32 @@
     </div>
 
     <div class="field">
-      <label for="layout">Layout</label>
+      <label for="layout" data-i18n="layoutLabel">Layout</label>
       <select id="layout"></select>
     </div>
 
     <div class="field">
-      <label>Erweiterungen (Tile-Vorrat)</label>
-      <label class="check"><input type="checkbox" id="base" checked> Grundspiel</label>
+      <label data-i18n="extensions">Erweiterungen (Tile-Vorrat)</label>
+      <label class="check"><input type="checkbox" id="base" checked> <span data-i18n="extBase">Grundspiel</span></label>
       <label class="check"><input type="checkbox" id="pok" checked> Prophecy of Kings</label>
       <label class="check"><input type="checkbox" id="te" checked> Thunder's Edge</label>
     </div>
 
     <div class="field">
-      <label for="ratio">Blau-Anteil: <span id="ratioVal">60</span>%</label>
+      <label for="ratio"><span data-i18n="ratioLabel">Blau-Anteil</span>: <span id="ratioVal">60</span>%</label>
       <input type="range" id="ratio" min="40" max="75" step="1" value="60">
     </div>
 
     <div class="field">
-      <label class="check"><input type="checkbox" id="wh" checked> Wormholes paarweise (je Typ mindestens 2)</label>
-      <p class="note">Immer aktiv: <b>höchstens 1 Wormhole pro Spieler-Slice</b> und <b>kein Wormhole direkt am Heimsystem</b>.</p>
+      <label class="check"><input type="checkbox" id="wh" checked> <span data-i18n="whPair">Wormholes paarweise (je Typ mindestens 2)</span></label>
+      <p class="note" data-i18n-html="whAlways">Immer aktiv: <b>höchstens 1 Wormhole pro Spieler-Slice</b> und <b>kein Wormhole direkt am Heimsystem</b>.</p>
     </div>
 
     <div class="field">
-      <label class="check"><input type="checkbox" id="useFactions"> Faktionen berücksichtigen</label>
+      <label class="check"><input type="checkbox" id="useFactions"> <span data-i18n="factionsLabel">Faktionen berücksichtigen</span></label>
       <div id="factions" class="factions"></div>
-      <label class="check"><input type="checkbox" id="contestFeature"> Merkmal möglichst auch für Nachbarn erreichbar <span id="contestHint" class="mini">(nur mit Faktionen)</span></label>
-      <p class="note">Sichert je Fraktion das vorteilhafte Merkmal <b>in Reichweite</b> (≤2 Felder):
+      <label class="check"><input type="checkbox" id="contestFeature"> <span data-i18n="contestFeature">Merkmal möglichst auch für Nachbarn erreichbar</span> <span id="contestHint" class="mini" data-i18n="contestHint">(nur mit Faktionen)</span></label>
+      <p class="note" data-i18n-html="factionsNote">Sichert je Fraktion das vorteilhafte Merkmal <b>in Reichweite</b> (≤2 Felder):
         Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole.<br>
         Die Option „für Nachbarn erreichbar“ legt es möglichst in die umkämpfte Randzone: eigenes + beide Nachbarn,
         sonst eigenes + ein Nachbar (die erreichte Stufe steht unter der Karte).
@@ -80,36 +84,36 @@
     </div>
 
     <div class="field">
-      <button id="generate" class="primary">Karte generieren</button>
-      <button id="improve">Balance verbessern</button>
-      <button id="png">Als PNG speichern</button>
+      <button id="generate" class="primary" data-i18n="genBtn">Karte generieren</button>
+      <button id="improve" data-i18n="improveBtn">Balance verbessern</button>
+      <button id="png" data-i18n="pngBtn">Als PNG speichern</button>
       <p id="status" class="status"></p>
     </div>
 
     <div class="field">
-      <label for="theme">Design</label>
+      <label for="theme" data-i18n="designLabel">Design</label>
       <select id="theme"></select>
     </div>
 
     <div class="field">
-      <label for="evaluator">Evaluator (Bewertung)</label>
+      <label for="evaluator" data-i18n="evaluatorLabel">Evaluator (Bewertung)</label>
       <select id="evaluator"></select>
     </div>
 
     <details class="info">
-      <summary>Was passiert beim „Karte generieren“?</summary>
+      <summary data-i18n="detailsSummary">Was passiert beim „Karte generieren“?</summary>
       <ol>
-        <li>Tile-Vorrat ziehen (Blau/Rot-Ziel, Wormholes paarweise).</li>
-        <li>Wiederholt: Zufallskarte → Optimierung über <b>alle fünf</b> Bewertungen
+        <li data-i18n-html="step1">Tile-Vorrat ziehen (Blau/Rot-Ziel, Wormholes paarweise).</li>
+        <li data-i18n-html="step2">Wiederholt: Zufallskarte → Optimierung über <b>alle fünf</b> Bewertungen
           (Simple Slice, Joebrew, Resource-, Influence- und Tech-Access) → Bank-Tausche,
           dazwischen „Kicks“.</li>
-        <li>Ist noch etwas einseitig, wird die Karte mit frischem Tile-Vorrat <b>neu generiert</b>.</li>
-        <li>Abbruch, sobald keine Bewertung mehr über 2&nbsp;% liegt (Dauer grob 4–10&nbsp;s).</li>
+        <li data-i18n-html="step3">Ist noch etwas einseitig, wird die Karte mit frischem Tile-Vorrat <b>neu generiert</b>.</li>
+        <li data-i18n-html="step4">Abbruch, sobald keine Bewertung mehr über 2&nbsp;% liegt (Dauer grob 4–10&nbsp;s).</li>
       </ol>
-      <p>Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und
+      <p data-i18n-html="detailsP1">Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und
         Wormhole-Paare bleiben dabei immer erhalten. Das Ergebnis steht unter der Karte als
         <b>Gap</b> je Bewertung und als <b>Einseitig</b>.</p>
-      <p>Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte
+      <p data-i18n-html="detailsP2">Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte
         Merkmal ins eigene Gebiet gelegt (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel,
         Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert.
         Mit <b>„für Nachbarn erreichbar“</b> wird es möglichst auf ein Feld gelegt, das auch die
@@ -122,13 +126,13 @@
     <div id="map" class="mapbox"></div>
     <div id="legend" class="legend"></div>
     <div class="stringrow">
-      <input id="mapstring" readonly placeholder="Map-String erscheint hier">
-      <button id="copy">Kopieren</button>
+      <input id="mapstring" readonly placeholder="Map-String erscheint hier" data-i18n-placeholder="mapPlaceholder">
+      <button id="copy" data-i18n="copyBtn">Kopieren</button>
       <a id="download" class="btn" download="ti4-map.svg">SVG</a>
     </div>
-    <p class="hint">Map-String: Feld „Map String“ im TI4 Map Lab → „Load From String“. Identisches Format
+    <p class="hint" data-i18n-html="hint">Map-String: Feld „Map String“ im TI4 Map Lab → „Load From String“. Identisches Format
       (36/60 Zahlen, <code>0</code> = leer, Mecatol nicht enthalten).</p>
-    <footer class="fan">
+    <footer class="fan" data-i18n-html="footer">
       <strong>Nicht-kommerzielles Fan-Projekt.</strong>
       Layouts, Tile- und Evaluator-Daten stammen aus dem
       <a href="https://github.com/joepinion/ti4-map-lab" target="_blank" rel="noopener">TI4 Map Lab</a>

@@ -5,13 +5,20 @@
 }
 html,body{ margin:0; background:var(--bg); color:var(--fg);
   font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
-header{ padding:18px 22px 8px; border-bottom:1px solid var(--line); }
+header{ padding:18px 22px 8px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 header h1{ margin:0; font-size:22px; letter-spacing:.3px; }
 header .sub{ margin:4px 0 0; color:var(--muted); font-size:13px; }
 .brand{ display:flex; align-items:center; gap:12px; }
 .brand .logo{ flex:0 0 auto; width:46px; height:46px; border-radius:10px; }
 .brandtext{ min-width:0; }
 .byline{ font-size:13px; font-weight:500; color:var(--muted); letter-spacing:.2px; white-space:nowrap; }
+.lang{ display:flex; flex:0 0 auto; border:1px solid var(--line); border-radius:8px; overflow:hidden;
+  background:var(--panel2); }
+.lang button{ border:0; border-radius:0; padding:6px 11px; font-size:12px; font-weight:700;
+  letter-spacing:.6px; background:transparent; color:var(--muted); }
+.lang button + button{ border-left:1px solid var(--line); }
+.lang button.active{ background:var(--accent); color:#ffffff; }
 
 main{ display:flex; gap:20px; padding:20px; align-items:flex-start; flex-wrap:wrap; }
 .panel{ background:var(--panel); border:1px solid var(--line); border-radius:10px;

@@ -132,3 +132,17 @@ console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
   console.log("Design-Pref:", ok?"gespeichert/geladen, ungueltige Werte ignoriert":("FEHLER "+[p1,p2,p3].join("/")));
   if(!ok){ fails++; console.log("FAILS="+fails); }
 }
+
+// ---- Sprache (DE/EN) ----
+{
+  const de=T.tr("genBtn");
+  T.setLang("en");
+  const en=T.tr("genBtn");
+  const lgEn=T.legendHTML();
+  const ok=(de==="Karte generieren" && en==="Generate map"
+    && lgEn.indexOf("Gravity Rift")>=0 && lgEn.indexOf("legendary planet")>=0);
+  T.setLang("de");
+  const back=T.tr("genBtn");
+  console.log("Sprache:", (ok && back===de)?"DE/EN-Texte und Legende korrekt":("FEHLER "+de+" / "+en+" / "+back));
+  if(!ok || back!==de){ fails++; console.log("FAILS="+fails); }
+}
