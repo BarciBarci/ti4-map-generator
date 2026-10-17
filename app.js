@@ -38,6 +38,20 @@
       detailsP1: "Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und Wormhole-Paare bleiben dabei immer erhalten. Das Ergebnis steht unter der Karte als <b>Gap</b> je Bewertung und als <b>Einseitig</b>.",
       detailsP2: "Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte Merkmal ins eigene Gebiet gelegt (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert. Mit <b>„für Nachbarn erreichbar“</b> wird es möglichst auf ein Feld gelegt, das auch die Nachbarn erreichen (umkämpfte Randzone).",
       mapPlaceholder: "Map-String erscheint hier", copyBtn: "Kopieren",
+      loadPlaceholder: "Map-String hier einfügen …", loadBtn: "Aus String laden",
+      loadEmpty: "Bitte einen Map-String einfügen.",
+      loadBadChars: "Map-String enthält ungültige Zeichen.",
+      loadLength: "Ungültiger Map-String: {n} Werte (erwartet 36 oder 60 Zahlen).",
+      loadRex: "Der String darf Mecatol Rex (18) nicht enthalten.",
+      loadUnknown: "Unbekannte Tile-Nummer: {id}.",
+      loadDup: "Tile {id} kommt mehrfach vor.",
+      loadNoLayout: "Der String passt zu keinem Layout. Spielerzahl und Erweiterungen prüfen.",
+      loadClosest: "Nächstes Layout: {title} ({bad} Tiles außerhalb, {count}/{need} belegt).",
+      loadOk: "Map-String geladen: {layout} ({n} Tiles).",
+      loadExp: "Aktivierte Erweiterungen: {list}.",
+      loadRest: "Rest offen: {rest}.",
+      loadBalanced: "Alle Bewertungen ausgeglichen.",
+      homeValues: "Home-Werte ({name}): {vals}",
       hint: "Map-String: Feld „Map String“ im TI4 Map Lab → „Load From String“. Identisches Format (36/60 Zahlen, <code>0</code> = leer, Mecatol nicht enthalten).",
       footer: "<strong>Nicht-kommerzielles Fan-Projekt.</strong> Layouts, Tile- und Evaluator-Daten stammen aus dem <a href='https://github.com/joepinion/ti4-map-lab' target='_blank' rel='noopener'>TI4 Map Lab</a> von Joseph Arthur Ellis (Lizenz <a href='https://creativecommons.org/licenses/by-sa/4.0/' target='_blank' rel='noopener'>CC BY-SA 4.0</a>). „Twilight Imperium“ ist ein Markenzeichen von Fantasy Flight Games / Asmodee. Kein offizielles Produkt, keine Verbindung zu FFG/Asmodee.",
 
@@ -100,6 +114,20 @@
       detailsP1: "Legal placement (no two anomalies or identical wormholes adjacent) and wormhole pairs are always preserved. The result below the map shows the <b>gap</b> per evaluation and any <b>one-sided</b> result.",
       detailsP2: "With <b>“Consider factions”</b>, each faction's beneficial feature is also placed in its own area (Muaat→supernova, Saar→asteroid field, Empyrean→nebula, Vuil'raith→gravity rift, Creuss→α/β wormhole) and fixed during optimisation. With <b>“reachable for neighbours”</b>, it is placed on a tile the neighbours can reach as well (contested border zone).",
       mapPlaceholder: "Map string appears here", copyBtn: "Copy",
+      loadPlaceholder: "Paste a map string here …", loadBtn: "Load from String",
+      loadEmpty: "Please paste a map string.",
+      loadBadChars: "Map string contains invalid characters.",
+      loadLength: "Invalid map string: {n} values (expected 36 or 60 numbers).",
+      loadRex: "The string must not contain Mecatol Rex (18).",
+      loadUnknown: "Unknown tile ID: {id}.",
+      loadDup: "Tile {id} appears more than once.",
+      loadNoLayout: "The string does not match any layout. Check the player count and expansions.",
+      loadClosest: "Closest layout: {title} ({bad} tiles outside, {count}/{need} filled).",
+      loadOk: "Map string loaded: {layout} ({n} tiles).",
+      loadExp: "Enabled expansions: {list}.",
+      loadRest: "Remaining: {rest}.",
+      loadBalanced: "All evaluations balanced.",
+      homeValues: "Home values ({name}): {vals}",
       hint: "Map string: “Map String” field in TI4 Map Lab → “Load From String”. Same format (36/60 numbers, <code>0</code> = empty, Mecatol not included).",
       footer: "<strong>Non-commercial fan project.</strong> Layouts, tile and evaluator data come from the <a href='https://github.com/joepinion/ti4-map-lab' target='_blank' rel='noopener'>TI4 Map Lab</a> by Joseph Arthur Ellis (licensed <a href='https://creativecommons.org/licenses/by-sa/4.0/' target='_blank' rel='noopener'>CC BY-SA 4.0</a>). “Twilight Imperium” is a trademark of Fantasy Flight Games / Asmodee. Not an official product, not affiliated with FFG/Asmodee.",
 
@@ -1059,6 +1087,110 @@
     const n = st.cells.length<=37 ? 36 : 60;
     return map_string_order_src.slice(0,n).map(o=>{ const sys=place[k(o.x,o.y,o.z)]; return sys?sys.id:0; }).join(" ");
   }
+
+  // ---- Map-String importieren ----
+  // Akzeptiert Zahlen getrennt durch Leerzeichen, Kommas oder Semikolons.
+  function parseStringNums(text){
+    const parts=String(text==null?"":text).trim().split(/[\s,;]+/).filter(Boolean);
+    if(!parts.length) return null;
+    const nums=[];
+    for(const p of parts){ if(!/^\d+$/.test(p)) return null; nums.push(+p); }
+    return nums;
+  }
+
+  // Sucht das Layout, zu dem ein Map-String passt (36 oder 60 Werte).
+  // preferPlayers: zuerst diese Spielerzahl pruefen, danach alle anderen.
+  function findLayoutForNums(nums, preferPlayers){
+    if(!nums || !nums.length) return { ok:false, error:"empty" };
+    if(nums.length!==36 && nums.length!==60) return { ok:false, error:"length", got:nums.length };
+    if(nums.indexOf(REX_ID)>=0) return { ok:false, error:"rex" };
+    const seen={};
+    for(const id of nums){
+      if(!id) continue;
+      if(!SYS[id]) return { ok:false, error:"unknown", id:id };
+      if(seen[id]) return { ok:false, error:"dup", id:id };
+      seen[id]=1;
+    }
+    const order=map_string_order_src.slice(0,nums.length);
+    const players=preferPlayers!=null ? [String(preferPlayers),"3","4","5","6"] : ["3","4","5","6"];
+    const checked={}; let best=null, bestScore=Infinity;
+    for(const p of players){
+      if(checked[p]) continue; checked[p]=1;
+      for(const title of LAYOUTS[p]){
+        const st=buildState(title, [], evSlice());
+        const n=st.cells.length<=37 ? 36 : 60;
+        if(n!==nums.length) continue;
+        let bad=0, count=0;
+        for(let i=0;i<n;i++){
+          const id=nums[i]; if(!id) continue;
+          const o=order[i], c=st.byKey[k(o.x,o.y,o.z)];
+          if(!c || c.type!==TYPE.OPEN){ bad++; continue; }
+          count++;
+        }
+        if(!bad && count===st.opens.length){
+          return { ok:true, st:st, players:p, title:title, count:count, n:n };
+        }
+        const score=bad+Math.abs(count-st.opens.length);
+        if(score<bestScore){ bestScore=score; best={ title:title, players:p, bad:bad, count:count, need:st.opens.length }; }
+      }
+    }
+    return { ok:false, error:"layout", best:best };
+  }
+
+  // Laedt einen Map-String in die Oberflaeche: Layout automatisch erkennen,
+  // benoetigte Erweiterungen aktivieren und die Karte direkt anzeigen.
+  function loadMapString(text){
+    const nums=parseStringNums(text);
+    if(!nums){ setStatus(tr(String(text==null?"":text).trim() ? "loadBadChars" : "loadEmpty")); return false; }
+    const m=findLayoutForNums(nums, $("players").value);
+    if(!m.ok){
+      let msg;
+      if(m.error==="length") msg=tr("loadLength",{n:m.got});
+      else if(m.error==="rex") msg=tr("loadRex");
+      else if(m.error==="unknown") msg=tr("loadUnknown",{id:m.id});
+      else if(m.error==="dup") msg=tr("loadDup",{id:m.id});
+      else msg=tr("loadNoLayout") + (m.best ? " "+tr("loadClosest",m.best) : "");
+      setStatus(msg);
+      return false;
+    }
+
+    // Spielerzahl + Layout aus dem String uebernehmen.
+    $("players").value=m.players;
+    fillLayouts();
+    $("layout").value=m.title;
+
+    // Erweiterungen automatisch aktivieren, wenn der String Tiles daraus enthaelt.
+    const enabled=[];
+    let nb=$("base").checked, np=$("pok").checked, nt=$("te").checked;
+    for(const id of nums){
+      if(!id) continue;
+      if(id<=58 && !nb){ nb=true; enabled.push(tr("extBase")); }
+      else if(id>=59 && id<=80 && !np){ np=true; enabled.push("Prophecy of Kings"); }
+      else if(id>=97 && !nt){ nt=true; enabled.push("Thunder's Edge"); }
+    }
+    $("base").checked=nb; $("pok").checked=np; $("te").checked=nt;
+    fillFactions();
+
+    const factions=readFactions();
+    const cbc=$("contestFeature");
+    const contest=!!(cbc && cbc.checked && !cbc.disabled);
+    const pool=buildPool(nb,np,nt);
+    const st=buildState(m.title, pool, evSlice(), factions, contest);
+    const place={};
+    for(let i=0;i<m.n;i++){
+      const id=nums[i]; if(!id) continue;
+      const o=map_string_order_src[i];
+      place[k(o.x,o.y,o.z)]=SYS[id];
+    }
+    st.pool=Object.keys(place).map(kk=>place[kk]);
+    st.allPool=pool;
+    st.whStrict=whLimitOkAll(st, place);
+    st.pinned=new Set();
+    cur={ st:st, place:place, prep:prepareEvals(st), gaps:null,
+          imported:{ title:m.title, count:m.count, enabled:enabled } };
+    paint();
+    return true;
+  }
   function stats(st, place){
     const systems=Object.values(place);
     const blue=systems.filter(isBlue).length, red=systems.filter(isRed).length;
@@ -1274,11 +1406,19 @@
     frep.forEach(r=>{ pills += `<span class="pill ${r.ok?"good":"bad"}">${shortFaction(r.name)}: ${r.feature} <b>${reachLabel(r)}</b></span>`; });
     $("stats").innerHTML = pills;
     const fbad=frep.filter(r=>!r.ok);
-    setStatus((side.length
-      ? tr("optRest",{n:prep.length,rest:side.join(", ")})
-      : tr("optOk",{n:prep.length,pct:(maxRel*100).toFixed(1)}))
+    let statusText;
+    if(cur.imported){
+      statusText = tr("loadOk",{layout:cur.imported.title,n:cur.imported.count});
+      if(cur.imported.enabled.length) statusText += " "+tr("loadExp",{list:cur.imported.enabled.join(", ")});
+      statusText += " " + (side.length ? tr("loadRest",{rest:side.join(", ")}) : tr("loadBalanced"));
+    } else {
+      statusText = side.length
+        ? tr("optRest",{n:prep.length,rest:side.join(", ")})
+        : tr("optOk",{n:prep.length,pct:(maxRel*100).toFixed(1)});
+    }
+    setStatus(statusText
       + (frep.length ? (fbad.length ? " "+tr("factOpen",{list:fbad.map(r=>shortFaction(r.name)+" ("+r.feature+")").join(", ")}) : " "+tr("factOk",{list:frep.map(r=>shortFaction(r.name)+"→"+r.feature+" ("+reachLabel(r)+")").join(", ")})) : "")
-      + ` Home-Werte (${prep[selIdx].name}): ${vals.join(" / ")}`);
+      + " " + tr("homeValues",{name:prep[selIdx].name,vals:vals.join(" / ")}));
   }
 
   // Vollautomatische Karten-Suche ueber mehrere Runden: pro Runde ein frischer
@@ -1391,6 +1531,10 @@
   $("improve").addEventListener("click", improve);
   $("png").addEventListener("click", downloadPNG);
   $("copy").addEventListener("click", ()=>{ const el=$("mapstring"); el.select(); navigator.clipboard.writeText(el.value); setStatus(tr("copied")); });
+  if($("load")){
+    $("load").addEventListener("click", ()=>loadMapString($("loadstring").value));
+    if($("loadstring")) $("loadstring").addEventListener("keydown", e=>{ if(e.key==="Enter") loadMapString($("loadstring").value); });
+  }
   if($("useFactions")) $("useFactions").addEventListener("change", fillFactions);
   ["base","pok","te"].forEach(id=>{ if($(id)) $(id).addEventListener("change", fillFactions); });
   (function bindLang(){
@@ -1404,5 +1548,5 @@
   if(typeof document!=="undefined" && document.body) document.body.setAttribute("data-theme", currentTheme());
   renderLegend();
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, THEME_ORDER, shortFaction, legendHTML, loadThemePref, saveThemePref, tr, setLang, currentLang, applyLang }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, parseStringNums, findLayoutForNums, loadMapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, THEME_ORDER, shortFaction, legendHTML, loadThemePref, saveThemePref, tr, setLang, currentLang, applyLang }; }
 })();

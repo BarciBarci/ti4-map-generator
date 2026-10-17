@@ -135,6 +135,35 @@ console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
   if(!ok){ fails++; console.log("FAILS="+fails); }
 }
 
+// ---- Map-String Import ----
+{
+  const rng=T.mulberry32(777);
+  const title="4-Player Standard";
+  const st=T.buildState(title,pool,T.evSlice());
+  st.pool=T.chooseTiles(pool,st.opens.length,0.60,true,rng);
+  st.allPool=pool;
+  const Es=T.prepareEvals(st);
+  const res=T.generateFull(st,Es,rng,1500,0.05);
+  let ok=false;
+  if(res){
+    const str=T.mapString(st,res.place);
+    const nums=T.parseStringNums(str);
+    const m=T.findLayoutForNums(nums,"6");           // falsche Vorauswahl -> Auto-Erkennung
+    const dup=nums.slice();
+    const first=dup.findIndex(x=>x>0);
+    const second=dup.findIndex((x,i)=>x>0 && i!==first);
+    dup[second]=dup[first];
+    const rex=nums.slice(); const zi=rex.findIndex(x=>x===0); if(zi>=0) rex[zi]=18;
+    const unknown=nums.slice(); const zi2=unknown.findIndex(x=>x===0); if(zi2>=0) unknown[zi2]=9999;
+    const d1=T.findLayoutForNums(dup,null), d2=T.findLayoutForNums(rex,null);
+    const d3=T.findLayoutForNums(unknown,null), d4=T.findLayoutForNums(nums.slice(0,35),null);
+    ok = m.ok && m.players==="4" && m.title===title && m.count===st.opens.length
+      && d1.error==="dup" && d2.error==="rex" && d3.error==="unknown" && d4.error==="length";
+  }
+  console.log("Map-String-Import:", ok?"Layout erkannt, Duplikat/Rex/Unbekannt/Laenge abgelehnt":"FEHLER");
+  if(!ok){ fails++; console.log("FAILS="+fails); }
+}
+
 // ---- Sprache (DE/EN) ----
 {
   T.setLang("en");

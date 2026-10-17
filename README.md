@@ -32,6 +32,10 @@ Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joep
   (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole)
   **in Reichweite** des jeweiligen Heimatsystems; optional **möglichst auch für die Nachbarn erreichbar**
   (umkämpfte Randzone). Eine Fraktion ist nur einmal wählbar – siehe Abschnitt unten.
+- **Load from String:** Einen vorhandenen Map-String (36 oder 60 Zahlen) einfügen – Spielerzahl und Layout
+  werden **automatisch erkannt**, benötigte Erweiterungen aktiviert und die Karte sofort gerendert und bewertet.
+  Duplikate, Mecatol Rex, unbekannte Tile-Nummern und nicht passende Längen werden mit klarer Meldung abgelehnt.
+  Anschließend funktionieren auch **„Balance verbessern“**, PNG-/SVG-Export und die Faktions-Prüfung.
 - **Sprachumschaltung DE/EN** in der Titelzeile (gespeichert im `localStorage`, **Standard: Englisch**):
   sämtliche Bedien-, Status-, Legenden- und Fehlertexte werden dynamisch übersetzt, ohne die
   generierte Karte zu verlieren.
