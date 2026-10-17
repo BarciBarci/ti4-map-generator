@@ -695,7 +695,9 @@
       scanlines:false, realistic:true, textShadow:true,
       swatch:{ home:"#39a05c", rex:"#9b7f2e", blue:"#2f5486", red:"#6e3a32" } },
   };
-  function currentTheme(){ const sel=($("theme")&&$("theme").value)||"classic"; return THEMES[sel]?sel:"classic"; }
+  // Reihenfolge im Design-Dropdown; "realistisch" ist der Standard.
+  const THEME_ORDER = ["realistic","classic","retro","giger"];
+  function currentTheme(){ const sel=($("theme")&&$("theme").value)||"realistic"; return THEMES[sel]?sel:"realistic"; }
   // Design-Einstellung im Browser speichern (uebersteht Reload).
   const THEME_PREF_KEY = "ti4design";
   function loadThemePref(){
@@ -779,7 +781,7 @@
   }
 
   function render(st, place, vals, themeKey){
-    const th = THEMES[themeKey] || THEMES.classic;
+    const th = THEMES[themeKey] || THEMES.realistic;
     const S=30, SQ=Math.sqrt(3);
     const proj=c=>[SQ*S*(c.x+c.z/2), 1.5*S*c.z];
     const pts={}; let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
@@ -931,8 +933,8 @@
   }
   function fillThemes(){
     const sel=$("theme"); if(!sel) return; sel.innerHTML="";
-    Object.keys(THEMES).forEach(kk=>{ const o=document.createElement("option"); o.value=kk; o.textContent=THEMES[kk].label; sel.appendChild(o); });
-    sel.value = loadThemePref() || "classic";
+    THEME_ORDER.filter(kk=>THEMES[kk]).forEach(kk=>{ const o=document.createElement("option"); o.value=kk; o.textContent=THEMES[kk].label; sel.appendChild(o); });
+    sel.value = loadThemePref() || "realistic";
   }
   function setStatus(t){ $("status").textContent=t; }
 
@@ -1192,5 +1194,5 @@
   renderLegend();
   setStatus("Bereit. „Karte generieren“ klicken.");
 
-  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, shortFaction, legendHTML, loadThemePref, saveThemePref }; }
+  if(typeof window!=="undefined"){ window.__ti4 = { buildState, buildPool, chooseTiles, ensureWormholes, wormholeTypes, generateFull, generateRounds, hillClimbAll, climbOne, bankClimb, perturb, gapsRel, oneSided, valsE, prepareEvals, randomFill, computeVals, computeHomeW, sysConflicts, render, mapString, stats, range, mulberry32, makeEval, evalUnder, evSlice, evJoe, isRed, isBlue, sysGlyphs, TECH_LETTER, ANOM_LABEL, LAYOUTS, SYS, default_evaluators, FACTIONS, factionNeed, hasFeature, featureDemand, featureReport, missingFeatures, reachPositions, THEMES, THEME_ORDER, shortFaction, legendHTML, loadThemePref, saveThemePref }; }
 })();

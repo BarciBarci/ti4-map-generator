@@ -7,7 +7,7 @@ und den passenden **Map-String** sowie eine gerenderte Übersicht ausgibt.
 
 Basiert auf den Layouts und Tile-Daten des [TI4 Map Lab](https://github.com/joepinion/ti4-map-lab) (CC BY-SA 4.0).
 
-![Beispielkarte](screenshot.png)
+![Beispielkarte (Design Realistisch)](previews/theme-realistic.svg)
 
 ## Features
 
@@ -230,15 +230,15 @@ Die Anzeige unter der Karte prüft alle drei Regeln über die Pillen `Leer` (Dim
 
 ## Designs
 
-Über das Dropdown **„Design“** lässt sich die Optik umschalten (gilt für Karte + Seite). Die Wahl wird im
-`localStorage` gespeichert und beim nächsten Aufruf wiederhergestellt.
+Über das Dropdown **„Design“** lässt sich die Optik umschalten (gilt für Karte + Seite). Standard ist
+**`Realistisch`**. Die Wahl wird im `localStorage` gespeichert und beim nächsten Aufruf wiederhergestellt.
 
 | Design | Stil |
 | --- | --- |
-| `Classic (dunkel)` | bisheriges, dezentes Dunkelblau/Dunkelgrün/Dunkelbraun |
+| `Realistisch` **(Standard)** | eigener Sternenhimmel, Farbverläufe auf den Hexen, **schattierte Planetenkugeln** mit Glanzpunkt und Ringen; **Anomalien, Wormholes und legendaere Planeten als Grafik** (Supernova-Strahlen mit Glut/Puls, Nebelwolken mit Turbulenz, Felsbrocken, rotierender Riss-Schleier, α/β-Vortexe, goldener Stern, Stations-Ring) – prozedural gezeichnet |
+| `Classic (dunkel)` | dezentes Dunkelblau/Dunkelgrün/Dunkelbraun (urspruengliche Optik) |
 | `Retro 8-Bit` | kräftige Primärfarben, dicke schwarze Outlines, Scanline-Overlay, Monospace-Schrift |
 | `Biomech (Giger)` | entsättigte Knochen-/Asche-/Rost-Töne, dünne Linien, Säuregrün als Akzent |
-| `Realistisch` | eigener Sternenhimmel, Farbverläufe auf den Hexen, **schattierte Planetenkugeln** mit Glanzpunkt; **Anomalien, Wormholes und legendaere Planeten als Grafik** (Supernova-Strahlen, Nebelwolken, Asteroiden, Riss-Schleier, α/β-Vortexe, goldener Stern, Stations-Ring) – prozedural gezeichnet |
 
 Vorschauen (vom App-Renderer selbst erzeugt):
 
