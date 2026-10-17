@@ -713,6 +713,58 @@
     if(STATION.indexOf(sys.id)>=0) g.push("⌂");
     return g;
   }
+  // Realistische Symbol-Grafik fuer Anomalien, Wormholes, legendaere Planeten und Stationen.
+  // Nur im Design "realistisch"; die anderen Designs nutzen die Text-Glyphen (SN, GR, ...).
+  function tileArt(sys, cx, cy, S, th){
+    if(!th || !th.realistic) return "";
+    const f=n=>+n.toFixed(1);
+    let out="";
+    if(sys.anomalies!==null) for(const a of sys.anomalies){
+      if(a===ANOMALIES.SUPERNOVA){
+        out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.44)}" fill="url(#aNova)"/>`
+             + `<circle cx="${cx}" cy="${cy}" r="${f(S*0.13)}" fill="#fffdf2"/>`;
+        for(let i=0;i<8;i++){ const an=i*Math.PI/4, r1=S*0.15, r2=S*0.30;
+          out += `<line x1="${f(cx+Math.cos(an)*r1)}" y1="${f(cy+Math.sin(an)*r1)}" x2="${f(cx+Math.cos(an)*r2)}" y2="${f(cy+Math.sin(an)*r2)}" stroke="#ffd27a" stroke-width="1.2" opacity="0.75"/>`; }
+      } else if(a===ANOMALIES.NEBULA){
+        for(const w of [[-6,-3,13,0.55],[6,2,11,0.5],[0,6,9,0.45],[-4,5,8,0.4]])
+          out += `<circle cx="${f(cx+w[0]*S/30)}" cy="${f(cy+w[1]*S/30)}" r="${f(w[2]*S/30)}" fill="url(#aNeb)" opacity="${w[3]}"/>`;
+      } else if(a===ANOMALIES.ASTEROID_FIELD){
+        for(const w of [[-9,-5,2.4],[3,-8,1.7],[10,1,2.7],[-3,7,1.9],[-12,4,1.3],[2,10,1.5],[11,-6,1.2]])
+          out += `<circle cx="${f(cx+w[0]*S/30)}" cy="${f(cy+w[1]*S/30)}" r="${f(w[2]*S/30)}" fill="#7d8794" stroke="#2a323a" stroke-width="0.4"/>`;
+      } else if(a===ANOMALIES.GRAVITY_RIFT){
+        out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.38)}" fill="url(#aRift)"/>`;
+        for(let i=0;i<3;i++){ const r=f(S*(0.34-i*0.09));
+          out += `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${f(r*0.55)}" fill="none" stroke="#7f68e0" stroke-width="1" opacity="${f(0.55-i*0.15)}" transform="rotate(${-20+i*18} ${cx} ${cy})"/>`; }
+      } else if(a===ANOMALIES.ENTROPIC_SCAR){
+        const pts=[[-11,-8],[-5,-3],[-8,2],[0,6],[6,3],[10,8]].map(p=>f(cx+p[0]*S/30)+","+f(cy+p[1]*S/30)).join(" ");
+        out += `<polyline points="${pts}" fill="none" stroke="#9a6bff" stroke-width="2.4" opacity="0.55"/>`
+             + `<polyline points="${pts}" fill="none" stroke="#e8dcff" stroke-width="0.9" opacity="0.9"/>`;
+      }
+    }
+    if(sys.wormhole!==null){
+      const isA=sys.wormhole===WORMHOLES.ALPHA;
+      out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.42)}" fill="${isA?"url(#wA)":"url(#wB)"}"/>`;
+      for(let i=0;i<3;i++){ const r=f(S*(0.16+i*0.10));
+        out += `<ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${f(r*0.6)}" fill="none" stroke="${isA?"#7fe3ff":"#d0a6ff"}" stroke-width="1" opacity="${f(0.7-i*0.16)}" transform="rotate(${-30+i*22} ${cx} ${cy})"/>`; }
+      out += `<circle cx="${cx}" cy="${cy}" r="${f(S*0.07)}" fill="#ffffff" opacity="0.85"/>`;
+    }
+    if(LEGENDARY.indexOf(sys.id)>=0){
+      const sx=f(cx+S*0.36), sy=f(cy-S*0.50), R=f(S*0.20), r=f(R*0.45);
+      let pts="";
+      for(let i=0;i<10;i++){ const an=-Math.PI/2+i*Math.PI/5, rad=(i%2===0)?R:r;
+        pts += f(sx+Math.cos(an)*rad)+","+f(sy+Math.sin(an)*rad)+" "; }
+      out += `<polygon points="${pts}" fill="url(#gStar)" stroke="#6b4a12" stroke-width="0.6"/>`;
+    }
+    if(STATION.indexOf(sys.id)>=0){
+      const scy=f(cy+S*0.05), R=f(S*0.22);
+      out += `<circle cx="${cx}" cy="${scy}" r="${R}" fill="none" stroke="#c9d6ea" stroke-width="1.6" opacity="0.75"/>`
+           + `<circle cx="${cx}" cy="${scy}" r="${f(R*0.55)}" fill="none" stroke="#c9d6ea" stroke-width="1" opacity="0.6"/>`;
+      for(let i=0;i<3;i++){ const an=i*Math.PI/3;
+        out += `<line x1="${f(cx+Math.cos(an)*R*0.55)}" y1="${f(scy+Math.sin(an)*R*0.55)}" x2="${f(cx+Math.cos(an)*R)}" y2="${f(scy+Math.sin(an)*R)}" stroke="#c9d6ea" stroke-width="1" opacity="0.6"/>`; }
+    }
+    return out;
+  }
+
   function render(st, place, vals, themeKey){
     const th = THEMES[themeKey] || THEMES.classic;
     const S=30, SQ=Math.sqrt(3);
@@ -752,6 +804,7 @@
         content += T(cy+5, "◇", 14, th.warpGlyph);
       } else if(c.type===TYPE.OPEN && sys){
         content += T(cy-17, sys.id, 9, th.id);
+        content += tileArt(sys, cx, cy, S, th);
         const ps=sys.planets, n=ps.length;
         const spacing = n>1 ? Math.min(S*0.55, (S*1.15)/(n-1)) : 0;
         const discR = n>1 ? Math.min(8.5, spacing*0.42) : 8.5;
@@ -788,6 +841,12 @@
         `<radialGradient id="pGreen" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#9ae6a8"/><stop offset="45%" stop-color="#3f9a5a"/><stop offset="100%" stop-color="#16402a"/></radialGradient>`+
         `<radialGradient id="pBlue" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#9ccaf2"/><stop offset="45%" stop-color="#3f6fae"/><stop offset="100%" stop-color="#162c4a"/></radialGradient>`+
         `<radialGradient id="pGrey" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#d6dde4"/><stop offset="45%" stop-color="#7d8a96"/><stop offset="100%" stop-color="#2a323a"/></radialGradient>`+
+        `<radialGradient id="aNova" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff8d0" stop-opacity="0.95"/><stop offset="35%" stop-color="#ffcf5a" stop-opacity="0.85"/><stop offset="70%" stop-color="#ff7a2e" stop-opacity="0.45"/><stop offset="100%" stop-color="#ff5a1e" stop-opacity="0"/></radialGradient>`+
+        `<radialGradient id="aNeb" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#7fd8ff" stop-opacity="0.45"/><stop offset="60%" stop-color="#6a7dff" stop-opacity="0.22"/><stop offset="100%" stop-color="#6a7dff" stop-opacity="0"/></radialGradient>`+
+        `<radialGradient id="aRift" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#000000" stop-opacity="0.92"/><stop offset="70%" stop-color="#1a0f2e" stop-opacity="0.7"/><stop offset="100%" stop-color="#1a0f2e" stop-opacity="0"/></radialGradient>`+
+        `<radialGradient id="wA" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#7fe3ff" stop-opacity="0.85"/><stop offset="55%" stop-color="#2a6a9a" stop-opacity="0.55"/><stop offset="100%" stop-color="#071424" stop-opacity="0"/></radialGradient>`+
+        `<radialGradient id="wB" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#e0b6ff" stop-opacity="0.85"/><stop offset="55%" stop-color="#7a3fa8" stop-opacity="0.55"/><stop offset="100%" stop-color="#1a0f2e" stop-opacity="0"/></radialGradient>`+
+        `<linearGradient id="gStar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffe89a"/><stop offset="100%" stop-color="#c98a10"/></linearGradient>`+
       `</defs>`;
       let sd=7;
       const rnd=()=>{ sd=(sd*1103515245+12345)&0x7fffffff; return sd/0x7fffffff; };

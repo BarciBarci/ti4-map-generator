@@ -238,7 +238,7 @@ Die Anzeige unter der Karte prüft alle drei Regeln über die Pillen `Leer` (Dim
 | `Classic (dunkel)` | bisheriges, dezentes Dunkelblau/Dunkelgrün/Dunkelbraun |
 | `Retro 8-Bit` | kräftige Primärfarben, dicke schwarze Outlines, Scanline-Overlay, Monospace-Schrift |
 | `Biomech (Giger)` | entsättigte Knochen-/Asche-/Rost-Töne, dünne Linien, Säuregrün als Akzent |
-| `Realistisch` | eigener Sternenhimmel, Farbverläufe auf den Hexen, **schattierte Planetenkugeln** mit Glanzpunkt (prozedural gezeichnet) |
+| `Realistisch` | eigener Sternenhimmel, Farbverläufe auf den Hexen, **schattierte Planetenkugeln** mit Glanzpunkt; **Anomalien, Wormholes und legendaere Planeten als Grafik** (Supernova-Strahlen, Nebelwolken, Asteroiden, Riss-Schleier, α/β-Vortexe, goldener Stern, Stations-Ring) – prozedural gezeichnet |
 
 Vorschauen (vom App-Renderer selbst erzeugt):
 
