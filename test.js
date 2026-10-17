@@ -11,6 +11,8 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,"data.js"),"utf8"), ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,"app.js"),"utf8"), ctx);
 
 const T=ctx.window.__ti4;
+const DEFAULT_LANG=T.currentLang();
+T.setLang("de");            // restliche Pruefungen nutzen die deutschen Texte
 const pool=T.buildPool(true,true,true);
 const BUDGET=+(process.argv[2]||3000);
 let fails=0, worst=0;
@@ -135,14 +137,15 @@ console.log(fails ? ("FAILS="+fails) : "OK - Faktionsbedarf überall erfüllt");
 
 // ---- Sprache (DE/EN) ----
 {
-  const de=T.tr("genBtn");
   T.setLang("en");
   const en=T.tr("genBtn");
   const lgEn=T.legendHTML();
-  const ok=(de==="Karte generieren" && en==="Generate map"
-    && lgEn.indexOf("Gravity Rift")>=0 && lgEn.indexOf("legendary planet")>=0);
   T.setLang("de");
-  const back=T.tr("genBtn");
-  console.log("Sprache:", (ok && back===de)?"DE/EN-Texte und Legende korrekt":("FEHLER "+de+" / "+en+" / "+back));
-  if(!ok || back!==de){ fails++; console.log("FAILS="+fails); }
+  const de=T.tr("genBtn");
+  const lgDe=T.legendHTML();
+  const ok=(DEFAULT_LANG==="en" && en==="Generate map" && de==="Karte generieren"
+    && lgEn.indexOf("Gravity Rift")>=0 && lgEn.indexOf("legendary planet")>=0
+    && lgDe.indexOf("Gravitationsriss")>=0 && lgDe.indexOf("legend\u00e4rer Planet")>=0);
+  console.log("Sprache:", ok?("Standard EN, Umschaltung DE/EN und Legende korrekt"):("FEHLER default="+DEFAULT_LANG+" / "+en+" / "+de));
+  if(!ok){ fails++; console.log("FAILS="+fails); }
 }

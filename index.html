@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TI4 Balanced Map Generator – by Barci + AI</title>
-<meta name="description" content="Ausgeglichene Twilight-Imperium-4-Karten für 3–6 Spieler generieren – inkl. Map-String, Wormhole-Paaren und Balance-Optimierung. Fan-Projekt.">
+<meta name="description" content="Generate balanced Twilight Imperium 4 maps for 3–6 players – with map string, wormhole pairs and balance optimisation. Fan project.">
 <meta name="theme-color" content="#0a0a12">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TI4 Balanced Map Generator – by Barci + AI">
 <meta property="og:title" content="TI4 Balanced Map Generator – by Barci + AI">
-<meta property="og:description" content="Ein-Klick-Generator für balancierte Twilight-Imperium-4-Karten (3–6 Spieler) mit Map-String, Wormhole-Paaren und Balance Gap 0. Fan-Projekt.">
+<meta property="og:description" content="One-click generator for balanced Twilight Imperium 4 maps (3–6 players) with map string, wormhole pairs and balance gap 0. Fan project.">
 <meta property="og:url" content="https://barcibarci.github.io/ti4-map-generator/">
 <meta property="og:image" content="https://barcibarci.github.io/ti4-map-generator/screenshot.png">
 <meta property="og:image:width" content="1200">
@@ -18,7 +18,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TI4 Balanced Map Generator – by Barci + AI">
-<meta name="twitter:description" content="Balancierte Twilight-Imperium-4-Karten für 3–6 Spieler generieren (Fan-Projekt).">
+<meta name="twitter:description" content="Generate balanced Twilight Imperium 4 maps for 3–6 players (fan project).">
 <meta name="twitter:image" content="https://barcibarci.github.io/ti4-map-generator/screenshot.png">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
@@ -29,19 +29,19 @@
     <img class="logo" src="logo.svg" width="46" height="46" alt="">
     <div class="brandtext">
       <h1>TI4 Balanced Map Generator <span class="byline">by Barci + AI</span></h1>
-      <p class="sub" data-i18n="sub">Ausgeglichene Karten für 3–6 Spieler · Layouts &amp; Tile-Daten aus dem TI4 Map Lab</p>
+      <p class="sub" data-i18n="sub">Balanced maps for 3–6 players · layouts &amp; tile data from the TI4 Map Lab</p>
     </div>
   </div>
-  <div class="lang" role="group" aria-label="Sprache / Language">
-    <button type="button" data-lang="de" class="active" aria-pressed="true">DE</button>
-    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+  <div class="lang" role="group" aria-label="Language / Sprache">
+    <button type="button" data-lang="de" aria-pressed="false">DE</button>
+    <button type="button" data-lang="en" class="active" aria-pressed="true">EN</button>
   </div>
 </header>
 
 <main>
   <section class="panel">
     <div class="field">
-      <label for="players" data-i18n="players">Spieler</label>
+      <label for="players" data-i18n="players">Players</label>
       <select id="players">
         <option value="3">3</option>
         <option value="4">4</option>
@@ -56,37 +56,37 @@
     </div>
 
     <div class="field">
-      <label data-i18n="extensions">Erweiterungen (Tile-Vorrat)</label>
-      <label class="check"><input type="checkbox" id="base" checked> <span data-i18n="extBase">Grundspiel</span></label>
+      <label data-i18n="extensions">Expansions (tile pool)</label>
+      <label class="check"><input type="checkbox" id="base" checked> <span data-i18n="extBase">Base game</span></label>
       <label class="check"><input type="checkbox" id="pok" checked> Prophecy of Kings</label>
       <label class="check"><input type="checkbox" id="te" checked> Thunder's Edge</label>
     </div>
 
     <div class="field">
-      <label for="ratio"><span data-i18n="ratioLabel">Blau-Anteil</span>: <span id="ratioVal">60</span>%</label>
+      <label for="ratio"><span data-i18n="ratioLabel">Blue ratio</span>: <span id="ratioVal">60</span>%</label>
       <input type="range" id="ratio" min="40" max="75" step="1" value="60">
     </div>
 
     <div class="field">
-      <label class="check"><input type="checkbox" id="wh" checked> <span data-i18n="whPair">Wormholes paarweise (je Typ mindestens 2)</span></label>
-      <p class="note" data-i18n-html="whAlways">Immer aktiv: <b>höchstens 1 Wormhole pro Spieler-Slice</b> und <b>kein Wormhole direkt am Heimsystem</b>.</p>
+      <label class="check"><input type="checkbox" id="wh" checked> <span data-i18n="whPair">Wormholes in pairs (at least 2 of each type)</span></label>
+      <p class="note" data-i18n-html="whAlways">Always active: <b>at most 1 wormhole per player slice</b> and <b>no wormhole directly at a home system</b>.</p>
     </div>
 
     <div class="field">
-      <label class="check"><input type="checkbox" id="useFactions"> <span data-i18n="factionsLabel">Faktionen berücksichtigen</span></label>
+      <label class="check"><input type="checkbox" id="useFactions"> <span data-i18n="factionsLabel">Consider factions</span></label>
       <div id="factions" class="factions"></div>
-      <label class="check"><input type="checkbox" id="contestFeature"> <span data-i18n="contestFeature">Merkmal möglichst auch für Nachbarn erreichbar</span> <span id="contestHint" class="mini" data-i18n="contestHint">(nur mit Faktionen)</span></label>
-      <p class="note" data-i18n-html="factionsNote">Sichert je Fraktion das vorteilhafte Merkmal <b>in Reichweite</b> (≤2 Felder):
-        Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel, Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole.<br>
-        Die Option „für Nachbarn erreichbar“ legt es möglichst in die umkämpfte Randzone: eigenes + beide Nachbarn,
-        sonst eigenes + ein Nachbar (die erreichte Stufe steht unter der Karte).
-        Eine Fraktion ist nur einmal wählbar. Discordant-Stars-Fraktionen sind nicht enthalten.</p>
+      <label class="check"><input type="checkbox" id="contestFeature"> <span data-i18n="contestFeature">Feature reachable for neighbours if possible</span> <span id="contestHint" class="mini" data-i18n="contestHint">(factions only)</span></label>
+      <p class="note" data-i18n-html="factionsNote">Secures each faction's beneficial feature <b>within reach</b> (≤2 tiles):
+        Muaat→supernova, Saar→asteroid field, Empyrean→nebula, Vuil'raith→gravity rift, Creuss→α/β wormhole.<br>
+        The option “reachable for neighbours” places it in the contested border zone if possible: own + both neighbours,
+        otherwise own + one neighbour (the achieved level is shown below the map).
+        Each faction can be selected only once. Discordant Stars factions are not included.</p>
     </div>
 
     <div class="field">
-      <button id="generate" class="primary" data-i18n="genBtn">Karte generieren</button>
-      <button id="improve" data-i18n="improveBtn">Balance verbessern</button>
-      <button id="png" data-i18n="pngBtn">Als PNG speichern</button>
+      <button id="generate" class="primary" data-i18n="genBtn">Generate map</button>
+      <button id="improve" data-i18n="improveBtn">Improve balance</button>
+      <button id="png" data-i18n="pngBtn">Save as PNG</button>
       <p id="status" class="status"></p>
     </div>
 
@@ -96,28 +96,27 @@
     </div>
 
     <div class="field">
-      <label for="evaluator" data-i18n="evaluatorLabel">Evaluator (Bewertung)</label>
+      <label for="evaluator" data-i18n="evaluatorLabel">Evaluator (score)</label>
       <select id="evaluator"></select>
     </div>
 
     <details class="info">
-      <summary data-i18n="detailsSummary">Was passiert beim „Karte generieren“?</summary>
+      <summary data-i18n="detailsSummary">What happens when you click “Generate map”?</summary>
       <ol>
-        <li data-i18n-html="step1">Tile-Vorrat ziehen (Blau/Rot-Ziel, Wormholes paarweise).</li>
-        <li data-i18n-html="step2">Wiederholt: Zufallskarte → Optimierung über <b>alle fünf</b> Bewertungen
-          (Simple Slice, Joebrew, Resource-, Influence- und Tech-Access) → Bank-Tausche,
-          dazwischen „Kicks“.</li>
-        <li data-i18n-html="step3">Ist noch etwas einseitig, wird die Karte mit frischem Tile-Vorrat <b>neu generiert</b>.</li>
-        <li data-i18n-html="step4">Abbruch, sobald keine Bewertung mehr über 2&nbsp;% liegt (Dauer grob 4–10&nbsp;s).</li>
+        <li data-i18n-html="step1">Draw a tile pool (blue/red target, wormholes in pairs).</li>
+        <li data-i18n-html="step2">Repeat: random map → optimisation across <b>all five</b> evaluations
+          (Simple Slice, Joebrew, Resource, Influence and Tech Access) → bank swaps,
+          with “kicks” in between.</li>
+        <li data-i18n-html="step3">If anything is still one-sided, the map is <b>regenerated</b> with a fresh tile pool.</li>
+        <li data-i18n-html="step4">Stop as soon as no evaluation is above 2&nbsp;% (typically 4–10&nbsp;s).</li>
       </ol>
-      <p data-i18n-html="detailsP1">Legale Platzierung (keine zwei Anomalien bzw. gleichen Wormholes benachbart) und
-        Wormhole-Paare bleiben dabei immer erhalten. Das Ergebnis steht unter der Karte als
-        <b>Gap</b> je Bewertung und als <b>Einseitig</b>.</p>
-      <p data-i18n-html="detailsP2">Mit <b>„Faktionen berücksichtigen“</b> wird zusätzlich je Fraktion das vorteilhafte
-        Merkmal ins eigene Gebiet gelegt (Muaat→Supernova, Saar→Asteroidenfeld, Empyrean→Nebel,
-        Vuil'raith→Gravitationsriss, Creuss→α/β-Wormhole) und während der Optimierung fixiert.
-        Mit <b>„für Nachbarn erreichbar“</b> wird es möglichst auf ein Feld gelegt, das auch die
-        Nachbarn erreichen (umkämpfte Randzone).</p>
+      <p data-i18n-html="detailsP1">Legal placement (no two anomalies or identical wormholes adjacent) and
+        wormhole pairs are always preserved. The result below the map shows the <b>gap</b> per evaluation
+        and any <b>one-sided</b> result.</p>
+      <p data-i18n-html="detailsP2">With <b>“Consider factions”</b>, each faction's beneficial feature is also placed
+        in its own area (Muaat→supernova, Saar→asteroid field, Empyrean→nebula, Vuil'raith→gravity rift,
+        Creuss→α/β wormhole) and fixed during optimisation. With <b>“reachable for neighbours”</b>, it is placed
+        on a tile the neighbours can reach as well (contested border zone).</p>
     </details>
   </section>
 
@@ -126,19 +125,19 @@
     <div id="map" class="mapbox"></div>
     <div id="legend" class="legend"></div>
     <div class="stringrow">
-      <input id="mapstring" readonly placeholder="Map-String erscheint hier" data-i18n-placeholder="mapPlaceholder">
-      <button id="copy" data-i18n="copyBtn">Kopieren</button>
+      <input id="mapstring" readonly placeholder="Map string appears here" data-i18n-placeholder="mapPlaceholder">
+      <button id="copy" data-i18n="copyBtn">Copy</button>
       <a id="download" class="btn" download="ti4-map.svg">SVG</a>
     </div>
-    <p class="hint" data-i18n-html="hint">Map-String: Feld „Map String“ im TI4 Map Lab → „Load From String“. Identisches Format
-      (36/60 Zahlen, <code>0</code> = leer, Mecatol nicht enthalten).</p>
+    <p class="hint" data-i18n-html="hint">Map string: “Map String” field in TI4 Map Lab → “Load From String”. Same format
+      (36/60 numbers, <code>0</code> = empty, Mecatol not included).</p>
     <footer class="fan" data-i18n-html="footer">
-      <strong>Nicht-kommerzielles Fan-Projekt.</strong>
-      Layouts, Tile- und Evaluator-Daten stammen aus dem
+      <strong>Non-commercial fan project.</strong>
+      Layouts, tile and evaluator data come from the
       <a href="https://github.com/joepinion/ti4-map-lab" target="_blank" rel="noopener">TI4 Map Lab</a>
-      von Joseph Arthur Ellis (Lizenz <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>).
-      „Twilight Imperium“ ist ein Markenzeichen von Fantasy Flight Games / Asmodee.
-      Kein offizielles Produkt, keine Verbindung zu FFG/Asmodee.
+      by Joseph Arthur Ellis (licensed <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>).
+      “Twilight Imperium” is a trademark of Fantasy Flight Games / Asmodee.
+      Not an official product, not affiliated with FFG/Asmodee.
     </footer>
   </section>
 </main>

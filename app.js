@@ -143,10 +143,11 @@
     },
   };
   const LANG_PREF_KEY = "ti4lang";
+  // Englisch ist der Standard; Deutsch wird nur bei gespeicherter Wahl "de" verwendet.
   let LANG = (function(){
-    try{ if(typeof localStorage==="undefined") return "de";
-      return localStorage.getItem(LANG_PREF_KEY)==="en" ? "en" : "de"; }
-    catch(e){ return "de"; }
+    try{ if(typeof localStorage==="undefined") return "en";
+      return localStorage.getItem(LANG_PREF_KEY)==="de" ? "de" : "en"; }
+    catch(e){ return "en"; }
   })();
   function currentLang(){ return LANG; }
   function tr(key, vars){
