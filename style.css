@@ -105,4 +105,9 @@ body[data-theme="giger"]{
 body[data-theme="giger"] header{ border-bottom-color:#3a4034; }
 body[data-theme="giger"] button.primary{ background:#4a5a30; border-color:#6b7d42; }
 body[data-theme="giger"] .pill.good{ border-color:#5d7a3a; }
-body[data-theme="giger"] .pill.warn{ border-color:#8a6d2a; }
+
+body[data-theme="realistic"]{
+  --bg:#04070d; --panel:#0a0f18; --panel2:#0e1622; --line:#1d2c42;
+  --fg:#e6eefb; --muted:#8ea3bf; --accent:#3f6fae; --accent2:#9b7f2e; --mapbg:#04070d;
+}
+body[data-theme="realistic"] header{ border-bottom-color:#1d2c42; }

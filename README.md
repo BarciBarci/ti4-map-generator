@@ -238,12 +238,20 @@ Die Anzeige unter der Karte prüft alle drei Regeln über die Pillen `Leer` (Dim
 | `Classic (dunkel)` | bisheriges, dezentes Dunkelblau/Dunkelgrün/Dunkelbraun |
 | `Retro 8-Bit` | kräftige Primärfarben, dicke schwarze Outlines, Scanline-Overlay, Monospace-Schrift |
 | `Biomech (Giger)` | entsättigte Knochen-/Asche-/Rost-Töne, dünne Linien, Säuregrün als Akzent |
+| `Realistisch` | eigener Sternenhimmel, Farbverläufe auf den Hexen, **schattierte Planetenkugeln** mit Glanzpunkt (prozedural gezeichnet) |
 
 Vorschauen (vom App-Renderer selbst erzeugt):
 
 ```bash
 node tools/preview_themes.js     # schreibt previews/theme-<name>.svg
 ```
+
+> **Warum kein „echtes" Tile-Artwork?** Der realistische Look von `keeganw.github.io/ti4` stammt aus
+> **eingescannten FFG-Kacheln** (`public/tiles/ST_<id>.webp`) und einem Galaxie-Hintergrundbild. Diese stehen
+> unter Urheberrecht und werden hier **nicht** eingebettet (Hotlinks würden zudem den PNG-Export per
+> Canvas-Tainting zerstören). Das Design `Realistisch` ist deshalb vollständig **eigene, prozedurale Grafik**
+> (SVG-Verläufe, Sternenfeld, Planeten mit Licht/Schatten). Wer eigenes/lizenziertes Artwork hat, kann es über
+> einen optionalen PNG-Sprite-Layer einsetzen (auf Anfrage).
 
 ## Daten aktualisieren
 

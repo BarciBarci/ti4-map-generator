@@ -683,6 +683,17 @@
       id:"#9aa08f", homeLabel:"#c9d6a8", value:"#e6ead8", rexLabel:"#d8c98a", warpGlyph:"#4a5450",
       glyph:"#a6e22e", trait:["#8a3a2a","#5a7a4a","#4a6a7a"], traitNone:"#5a6157",
       techFill:"#0c0d0c", techStroke:"#c9d6a8", resinf:"#c9d0b8", scanlines:false },
+    // Realistisch: eigener Sternenhimmel, Farbverlaeufe und schattierte Planetenkugeln.
+    // Bewusst KEINE FFG-Tilescans (keeganw nutzt dafuer public/tiles/ST_<id>.webp).
+    realistic: { label:"Realistisch", bg:"#04070d", bgFill:"url(#gBg)", panel:"#0a0f18",
+      blue:"url(#gBlue)", red:"url(#gRed)", home:"url(#gHome)", rex:"url(#gRex)",
+      closed:"#010205", warp:"#060a11",
+      stroke:"#1d2c42", sw:1, font:"sans-serif",
+      id:"#9fb4d0", homeLabel:"#d7ffe0", value:"#ffffff", rexLabel:"#ffe9a8", warpGlyph:"#33455f",
+      glyph:"#ffd479", trait:["#c0392b","#27ae60","#2980b9"], traitNone:"#7f8c8d",
+      techFill:"#0b0f16", techStroke:"#c8d6ea", resinf:"#dbe6f5",
+      scanlines:false, realistic:true, textShadow:true,
+      swatch:{ home:"#39a05c", rex:"#9b7f2e", blue:"#2f5486", red:"#6e3a32" } },
   };
   function currentTheme(){ const sel=($("theme")&&$("theme").value)||"classic"; return THEMES[sel]?sel:"classic"; }
   // Design-Einstellung im Browser speichern (uebersteht Reload).
@@ -725,7 +736,10 @@
       else if(c.type===TYPE.OPEN && sys) fill = isRed(sys)?th.red:th.blue;
       fills += `<polygon points="${poly}" fill="${fill}" stroke="${th.stroke}" stroke-width="${th.sw}"/>`;
 
-      const T=(y,txt,size,fillc,w)=>`<text x="${cx}" y="${y}" font-size="${size}" fill="${fillc}" text-anchor="middle" font-family="${th.font}"${w?' font-weight="bold"':''}>${txt}</text>`;
+      const T=(y,txt,size,fillc,w)=>{
+        const sh = th.textShadow ? `<text x="${cx}" y="${(y+0.9).toFixed(1)}" font-size="${size}" fill="#000000" opacity="0.55" text-anchor="middle" font-family="${th.font}"${w?' font-weight="bold"':''}>${txt}</text>` : "";
+        return sh + `<text x="${cx}" y="${y}" font-size="${size}" fill="${fillc}" text-anchor="middle" font-family="${th.font}"${w?' font-weight="bold"':''}>${txt}</text>`;
+      };
       if(c.type===TYPE.HOME){
         const hi=st.homes.indexOf(c.key);
         const fac=(st.factionNames && st.factionNames[hi]) ? shortFaction(st.factionNames[hi]) : null;
@@ -744,8 +758,12 @@
         const startX = cx - (n-1)*spacing/2;
         ps.forEach((pl,i)=>{
           const px=+(startX+i*spacing).toFixed(1), py=+(cy-2).toFixed(1);
-          const tf=(pl.traits&&pl.traits.length)?(th.trait[pl.traits[0]]||th.traitNone):th.traitNone;
-          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${tf}" stroke="${th.stroke}" stroke-width="${(th.sw*0.8).toFixed(2)}"/>`;
+          const isReal=!!th.realistic;
+          const pfill = isReal
+            ? ((["url(#pRed)","url(#pGreen)","url(#pBlue)"][(pl.traits&&pl.traits.length)?pl.traits[0]:-1]) || "url(#pGrey)")
+            : ((pl.traits&&pl.traits.length)?(th.trait[pl.traits[0]]||th.traitNone):th.traitNone);
+          content += `<circle cx="${px}" cy="${py}" r="${discR.toFixed(1)}" fill="${pfill}" stroke="${isReal?"#0a1018":th.stroke}" stroke-width="${(th.sw*0.8).toFixed(2)}"/>`;
+          if(isReal) content += `<circle cx="${(px-discR*0.34).toFixed(1)}" cy="${(py-discR*0.34).toFixed(1)}" r="${(discR*0.30).toFixed(1)}" fill="#ffffff" opacity="0.22"/>`;
           if(pl.tech_specialties && pl.tech_specialties.length){
             const bx=(px+discR*0.75).toFixed(1), by=(py-discR*0.75).toFixed(1);
             content += `<circle cx="${bx}" cy="${by}" r="4.2" fill="${th.techFill}" stroke="${th.techStroke}" stroke-width="0.6"/>`
@@ -757,9 +775,30 @@
         if(g.length) content += T(cy+21, g.join(" "), 8, th.glyph);
       }
     }
+    // Realistisch: eigener Sternenhimmel + Farbverlaufs-Definitionen (keine FFG-Assets).
+    let defs="", stars="";
+    if(th.realistic){
+      defs = `<defs>`+
+        `<radialGradient id="gBg" cx="50%" cy="42%" r="80%"><stop offset="0%" stop-color="#0b1526"/><stop offset="60%" stop-color="#050a14"/><stop offset="100%" stop-color="#02040a"/></radialGradient>`+
+        `<linearGradient id="gBlue" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0%" stop-color="#2f5486"/><stop offset="100%" stop-color="#152238"/></linearGradient>`+
+        `<linearGradient id="gRed" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0%" stop-color="#6e3a32"/><stop offset="100%" stop-color="#381d19"/></linearGradient>`+
+        `<linearGradient id="gHome" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0%" stop-color="#39a05c"/><stop offset="100%" stop-color="#143a24"/></linearGradient>`+
+        `<linearGradient id="gRex" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0%" stop-color="#9b7f2e"/><stop offset="100%" stop-color="#463711"/></linearGradient>`+
+        `<radialGradient id="pRed" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#f0907f"/><stop offset="45%" stop-color="#c0503f"/><stop offset="100%" stop-color="#5a1c15"/></radialGradient>`+
+        `<radialGradient id="pGreen" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#9ae6a8"/><stop offset="45%" stop-color="#3f9a5a"/><stop offset="100%" stop-color="#16402a"/></radialGradient>`+
+        `<radialGradient id="pBlue" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#9ccaf2"/><stop offset="45%" stop-color="#3f6fae"/><stop offset="100%" stop-color="#162c4a"/></radialGradient>`+
+        `<radialGradient id="pGrey" cx="34%" cy="30%" r="78%"><stop offset="0%" stop-color="#d6dde4"/><stop offset="45%" stop-color="#7d8a96"/><stop offset="100%" stop-color="#2a323a"/></radialGradient>`+
+      `</defs>`;
+      let sd=7;
+      const rnd=()=>{ sd=(sd*1103515245+12345)&0x7fffffff; return sd/0x7fffffff; };
+      for(let i=0;i<170;i++){
+        const sx=(rnd()*wd).toFixed(0), sy=(rnd()*ht).toFixed(0), sr=(0.4+rnd()*1.25).toFixed(2), so=(0.12+rnd()*0.55).toFixed(2);
+        stars += `<circle cx="${sx}" cy="${sy}" r="${sr}" fill="#cfe0ff" opacity="${so}"/>`;
+      }
+    }
     const scanDefs = th.scanlines ? `<defs><pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="2" fill="#000000" opacity="0.16"/></pattern></defs>` : "";
     const scanRect = th.scanlines ? `<rect width="100%" height="100%" fill="url(#scan)"/>` : "";
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${wd|0}" height="${ht|0}" viewBox="0 0 ${wd|0} ${ht|0}">${scanDefs}<rect width="100%" height="100%" fill="${th.bg}"/>${fills}${content}${scanRect}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${wd|0}" height="${ht|0}" viewBox="0 0 ${wd|0} ${ht|0}">${defs}${scanDefs}<rect width="100%" height="100%" fill="${th.bgFill||th.bg}"/>${stars}${fills}${content}${scanRect}</svg>`;
   }
 
   // ---- Map-String & Statistik ----
@@ -891,6 +930,8 @@
     const gly=t=>`<span class="lg-glyph" style="color:${th.glyph}">${t}</span>`;
     const pair=(sym,txt)=>`<span class="lg-pair">${sym}<span class="lg-t">${txt}</span></span>`;
     const item=(...parts)=>`<span class="lg-item">${parts.join("")}</span>`;
+    // Bei Verlaufs-Fuellungen (realistisch) feste Swatch-Farben verwenden.
+    const swc=c=>(th.swatch && th.swatch[c]) || th[c];
 
     const techKeys=[TECH_LETTER[TECH_SPECIALTIES.WARFARE], TECH_LETTER[TECH_SPECIALTIES.PROPULSION],
                     TECH_LETTER[TECH_SPECIALTIES.BIOTIC], TECH_LETTER[TECH_SPECIALTIES.CYBERNETIC]];
@@ -908,7 +949,7 @@
       item(pair(gly("★"),"legendärer Planet")+pair(gly("⌂"),"Raumstation")+pair(gly("◇"),"Warprand (leer)")),
       item(pair(`<span class="lg-num">110</span>`,"Tile-Nummer (System)")),
       item(`<span class="lg-t">Felder:</span>`,
-        pair(sw(th.home),"HOME")+pair(sw(th.rex),"Mecatol Rex")+pair(sw(th.blue),"besiedelbar (blau)")+pair(sw(th.red),"leer/Anomalie (rot)")),
+        pair(sw(swc("home")),"HOME")+pair(sw(swc("rex")),"Mecatol Rex")+pair(sw(swc("blue")),"besiedelbar (blau)")+pair(sw(swc("red")),"leer/Anomalie (rot)")),
     ].join("");
   }
   function renderLegend(){ const el=$("legend"); if(el) el.innerHTML=legendHTML(); }
